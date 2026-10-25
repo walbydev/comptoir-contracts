@@ -13,7 +13,9 @@ frozen inputs and are never edited.
 ## Commands
 
 ```bash
-make check     # Lua syntax check over every .lua file (luac -p)
+make check     # L1 static gate: Lua syntax over every .lua file (luac -p) + locale keys
+               # (tools/check_locale.py: a reference with no string, a string nobody prints, a
+               # key name that is not [a-z0-9-]+)
 make test      # headless Factorio scenario run (arrives with the first code)
 make package   # build comptoir-contracts_<version>.zip — name format is mandatory
 ```
@@ -36,6 +38,11 @@ a headless load failure; quote the command output, never the claim.
 - **`helpers.write_file`, never `game.write_file`** — the second was removed in 2.1.23 (measured
   2026-10-25: `LuaGameScript doesn't contain key write_file`). The test harness depends on it.
 - **`recipe.categories`**, not `recipe.category`, in 2.1.
+- **A locale key is `<section>.<key>`: the prefix belongs to the section, never to the key.**
+  `[comptoir]` + `available=…` is read as `{"comptoir.available"}`; `comptoir-available=…` under
+  `[comptoir]` becomes `comptoir.comptoir-available`, which nothing asks for, and the window fills with
+  `Unknown key` (it did, lot (b)). References are **literals**: a caption built with
+  `"comptoir.reason-" .. reason` is invisible to every check. `make check` refuses both shapes (ADR 0053).
 - **`storage` carries a version number from the first release**, with a migration path. A published
   save is real user data.
 - **No secret, no path, no host name in the repository.** It is public: `FACTORIO_API_KEY` lives

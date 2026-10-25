@@ -17,6 +17,9 @@
 --              2026-10-25 — A31: the cap counts live contracts (ADR 0051). Three live contracts, no
 --                           fourth offer generated, a crafted fourth refused with `no_free_slot`, and
 --                           exactly one new offer once a contract is paid
+--              2026-10-25 — lot b fix: B1-gui-pure checks that every refusal reason carries a literal
+--                           caption, and hands four of the window's keys to the engine so the runner
+--                           can read the rendered text (H.probe_locale, ADR 0053)
 -- Usages:      required by control.lua of the test mod, queued by `scenario.lua`
 -- Notes:       THE NUMBERS ARE RECOMPUTED FROM THE DATA, NEVER COPIED FROM THE MOD. The test mod
 --              requires `data/prices.lua` and `config/balance.lua` of the mod under test and derives
@@ -1568,6 +1571,47 @@ M["b1-gui-pure"] = {
     end
     H.ok(reasons_ok, "B1-gui-pure: each reason is a plain key (no space, no number)")
 
+    -- Every reason carries a literal caption under [comptoir], and the caption table holds nothing the
+    -- window cannot print: a refusal with no key is a line of "Unknown key" in the player's chat (ADR
+    -- 0053). `tools/check_locale.py` proves the other direction — those keys exist in both locale files.
+    local captions_ok = true
+    local captioned = 0
+    for _, reason in ipairs(gui_window.REASONS) do
+      local caption = gui_window.REASON_KEYS[reason]
+      captioned = captioned + 1
+      if type(caption) ~= "table" or type(caption[1]) ~= "string"
+        or caption[1]:find("^comptoir%.[a-z0-9%-]+$") == nil then
+        captions_ok = false
+      end
+    end
+    H.eq(captioned, #gui_window.REASONS, "B1-gui-pure: every listed reason has a caption")
+    H.ok(captions_ok, "B1-gui-pure: every caption is a literal key of the form comptoir.<name>")
+    local stray = 0
+    for code in pairs(gui_window.REASON_KEYS) do
+      local listed = false
+      for _, reason in ipairs(gui_window.REASONS) do
+        if reason == code then
+          listed = true
+        end
+      end
+      if not listed then
+        stray = stray + 1
+      end
+    end
+    H.eq(stray, 0, "B1-gui-pure: no caption for a reason the window does not list")
+
+    -- Same deal for the three group names of the character line: the catalogue is the list, the caption
+    -- table must cover it, and a group with no caption would print its raw name in the header.
+    local groups_captioned = true
+    for _, group in ipairs(catalogue.groups) do
+      local caption = gui_window.GROUP_KEYS[group]
+      if type(caption) ~= "table" or type(caption[1]) ~= "string"
+        or caption[1]:find("^comptoir%.[a-z0-9%-]+$") == nil then
+        groups_captioned = false
+      end
+    end
+    H.ok(groups_captioned, "B1-gui-pure: every catalogue group has a literal caption")
+
     -- Case 1, case 2, case 3 of a row: quantity, payout, reserve, clock and bar band. The contract
     -- tables are plain: no game, no storage, no entity.
     local rows = {
@@ -1699,6 +1743,16 @@ M["b1-gui-pure"] = {
     H.eq(total, 19980, "B1-gui-pure: time_left reports the span the bar is a fraction of")
     local late, _ = contracts.time_left({ deadline_seconds = 333, deadline_tick = 1000 }, 5000)
     H.eq(late, 0, "B1-gui-pure: time_left never goes negative")
+
+    -- A21's runtime half, measured instead of scanned: four of the window's keys are handed to the
+    -- engine, which writes the text it actually resolves (H.probe_locale). A key missing from the
+    -- locale — or declared with its prefix still on it, the lot-b regression — lands in the probe file
+    -- as `Unknown key: "comptoir.…"`, and `judge()` in tools/run_tests.py turns the run red. This is
+    -- the only check in the bench that asks the engine to render a string.
+    H.probe_locale("available", { "comptoir.available", 1 })
+    H.probe_locale("character", { "comptoir.character", "Chemistry", "Logistics" })
+    H.probe_locale("group-chemistry", { "comptoir.group-chemistry" })
+    H.probe_locale("reason-no-free-slot", { "comptoir.reason-no-free-slot" })
 
     H.note(
       "B1-gui-pure: the frame itself cannot be built headless (ADR 0050 — no `player.gui.screen` without a "

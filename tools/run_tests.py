@@ -13,6 +13,11 @@ Three things are checked for every run, and all three must hold for the run to c
 2. `test-results.json` exists, is fresh, and parses;
 3. every entry in it has `status == "pass"`, at least one assertion, and no failure.
 
+A scenario may also ask the engine to *render* a localised string (`H.probe_locale` in the test mod):
+the resolved text lands in `script-output` and is judged as a fourth kind of check. "The key is
+declared" and "the key resolves" turned out to be two different things, and the second one is what the
+player reads — the window of lot (b) was made of keys that were declared under the wrong name (ADR 0053).
+
 Usage
 -----
     python3 tools/run_tests.py                 # both configurations, every scenario
@@ -46,6 +51,9 @@ REPO = Path(__file__).resolve().parent.parent
 MAIN_MOD = "comptoir-contracts"
 TEST_MOD = "comptoir-test"
 MOD_VERSION = "0.1.0"
+# A scenario that wants its localised strings rendered says so with a detail line of this shape; the
+# file it names lands in script-output and carries the text the engine actually resolved (ADR 0053).
+LOCALE_PROBE_PREFIX = "PROBE "
 
 DEFAULT_FACTORIO = Path("/opt/data/.local/opt/factorio/bin/x64/factorio")
 
@@ -436,6 +444,46 @@ def ensure_template(factorio: Path, base: Path, configuration: str) -> bool:
 # --------------------------------------------------------------------------------------------------
 
 
+def judge_locale_probes(write_dir: Path, entries: list[dict]) -> tuple[int, int, list[str]]:
+    """Assert that every localised string a scenario asked the engine to render came back as text.
+
+    `H.probe_locale` (test mod) hands a LocalisedString to `helpers.write_file`, which writes the
+    *resolved* text. Measured on 2.1.23 (2026-10-25): `{"comptoir.x"}:format()` raises "attempt to call
+    method 'format'", there is no `helpers.read_file`, and `localised_print` returns nothing — the file
+    is the only channel that gives the text back to this runner. A key the engine cannot find is
+    written as `Unknown key: "comptoir.x"`, which is exactly the window lot (b) shipped, so an empty or
+    `Unknown key` probe makes the run red. `tools/check_locale.py` proves the static half; this proves
+    the engine agrees with it (ADR 0053).
+    """
+    names = [
+        line[len(LOCALE_PROBE_PREFIX) :]
+        for entry in entries
+        for line in entry.get("detail", [])
+        if line.startswith(LOCALE_PROBE_PREFIX)
+    ]
+    checks = 0
+    failures = 0
+    notes: list[str] = []
+    for name in names:
+        checks += 1
+        label = name.removeprefix("locale-probe-").removesuffix(".txt")
+        probe = write_dir / "script-output" / name
+        if not probe.is_file():
+            failures += 1
+            notes.append(f"locale probe {label}: no file was written")
+            continue
+        text = probe.read_text(encoding="utf-8", errors="replace").strip()
+        if not text:
+            failures += 1
+            notes.append(f"locale probe {label}: empty — the key resolved to nothing")
+        elif text.startswith("Unknown key"):
+            failures += 1
+            notes.append(f"locale probe {label}: {text}")
+        else:
+            notes.append(f'locale probe {label}: "{text}"')
+    return checks, failures, notes
+
+
 def judge(run: dict, expected_label: str) -> dict:
     """Turn one game run into a verdict: log, file, parse, statuses."""
     verdict = {
@@ -471,6 +519,10 @@ def judge(run: dict, expected_label: str) -> dict:
                 for line in entry.get("detail", []):
                     if line.startswith("NOTE "):
                         verdict["notes"].append(line[5:])
+        probe_checks, probe_failures, probe_notes = judge_locale_probes(run["write_dir"], entries)
+        verdict["checks"] += probe_checks
+        verdict["failures"] += probe_failures
+        verdict["notes"].extend(probe_notes)
     verdict["green"] = (
         run["found"]
         and payload is not None

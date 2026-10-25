@@ -7,10 +7,10 @@
 FACTORIO ?= factorio
 LUAC    ?= luac
 
-.PHONY: help check test test-one package prices prices-md dump audit index
+.PHONY: help check check-lua check-locale test test-one package prices prices-md dump audit index
 
 help:
-	@echo "check     - Lua syntax check over every .lua file (needs luac, not installed here)"
+	@echo "check     - L1 static gate: Lua syntax (luac) + locale keys (tools/check_locale.py)"
 	@echo "test      - the bench: one scenario per criterion, both configurations (TEST_ARGS=...)"
 	@echo "test-one  - one scenario, for a red/green demonstration (SCENARIO=a13)"
 	@echo "package   - build the mod zip for the portal (not implemented yet)"
@@ -45,11 +45,21 @@ prices:
 prices-md:
 	python3 tools/cost_table.py --markdown
 
-check:
+# The L1 gate: a PR is green on `make check` or it is not green. Both halves are here for that reason
+# — `check-locale` is not a target someone has to remember to run (ADR 0053: the window shipped with
+# every caption reading "Unknown key" while this file's syntax half was green).
+check: check-lua check-locale
+
+check-lua:
 	@files=$$(find . -name '*.lua' -not -path './.git/*'); \
 	if [ -z "$$files" ]; then echo "no .lua file yet — nothing to check"; exit 0; fi; \
 	for f in $$files; do $(LUAC) -p "$$f" || exit 1; done; \
 	echo "lua syntax OK: $$(echo $$files | wc -w) file(s)"
+
+# Every `{"comptoir.<key>"}` in scripts/ and control.lua must exist under `[comptoir]` in BOTH locale
+# files, every declared key must be printed somewhere, and every key name must match [a-z0-9-]+.
+check-locale:
+	python3 tools/check_locale.py
 
 # The bench owns its own verdict: tools/run_tests.py starts Factorio once per scenario, in a
 # throwaway install of its own, and exits non-zero when any run is red, when the log carries a Lua

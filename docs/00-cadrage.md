@@ -2,7 +2,7 @@
 
 > Version: 1.0 · Date: 2026-10-25 · Requested by: Philippe Ryf
 > Status: **all ten blocks CLOSED** (2026-10-25) — **68 decisions in force**, 11 withdrawn
-> (Appendix C), 52 ADRs (34 in force), 31 acceptance criteria, **no question left blocking v1**,
+> (Appendix C), 53 ADRs (35 in force), 31 acceptance criteria, **no question left blocking v1**,
 > 12 open questions, all belonging to parked features.
 > Repository: `walbydev/comptoir-contracts` (public GitHub, MIT) — created and verified 2026-10-25.
 > No development before tag `v0.1-cadrage`.

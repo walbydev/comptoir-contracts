@@ -10,10 +10,15 @@
 -- Created:     2026-10-25
 -- Revisions:   2026-10-25 — initial: assertions, JSON writer, failure accounting
 --              2026-10-25 — coroutines replaced by scheduled callbacks (the engine removed them)
+--              2026-10-25 — H.probe_locale: a localised string is rendered by the engine into a file
+--                           the runner reads, because no API returns the text (ADR 0053)
 -- Usages:      required by control.lua and scripts/scenarios.lua of the test mod
 -- Notes:       `helpers.write_file` is the only way a mod may write a file (measured 2026-10-25 on
 --              2.1.23: there is no `game.write_file`). The JSON is built by hand: no library ships
 --              with the game and a serializer here would be a second thing to test.
+--              `helpers.write_file` is also the only way to make the engine PRINT a localised string:
+--              hand it a LocalisedString and it writes the resolved text, `Unknown key: "…"` when the
+--              key does not exist. That is how A21's runtime half is measured (H.probe_locale).
 --              A TEST THAT CANNOT FAIL IS A BUG: an entry with zero assertions is red, even when
 --              nothing "failed". The file is rewritten after every scenario, so the runner can stop
 --              the game as soon as the answer it asked for is in — no timed waits in the runner.
@@ -151,6 +156,26 @@ end
 
 function H.fail(message)
   H.ok(false, message)
+end
+
+-- A localised string, rendered by the engine and left on disk for the runner to read.
+--
+-- MEASURED on 2.1.23 (2026-10-25), because the obvious APIs are not there: `({"comptoir.available"})
+-- :format(1)` raises "attempt to call method 'format' (a nil value)"; there is no `localised_string`
+-- helper and no `helpers.read_file`; `localised_print` renders but returns nothing. What does work:
+-- `helpers.write_file(path, localised_string)` writes THE RESOLVED TEXT, and a key the engine cannot
+-- find lands in the file as `Unknown key: "comptoir.x"` — the exact screen lot (b) shipped.
+--
+-- So the loop closes in two halves: this writes the file, `judge()` in tools/run_tests.py reads it and
+-- turns an empty or `Unknown key` line into a red run. A check that cannot fail is a bug, and this one
+-- fails on the regression that no static scan can see (the engine's own resolution).
+function H.probe_locale(label, localised)
+  if H.current == nil then
+    error("[comptoir-test] harness.probe_locale outside a scenario: " .. tostring(label), 2)
+  end
+  local name = "locale-probe-" .. label .. ".txt"
+  helpers.write_file(name, localised)
+  H.current.detail[#H.current.detail + 1] = "PROBE " .. name
 end
 
 -- Write (or rewrite) the results file. Called after every scenario and at the end of the queue.

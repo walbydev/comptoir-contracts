@@ -12,6 +12,13 @@
 --                           cap and the fixed extra placeholder are gone: the module caps the live
 --                           contracts (ADR 0051), so the window draws what it is given and fills the
 --                           rest with placeholders up to `offer_slots`
+--              2026-10-25 — lot b regression: every caption was a bare key (`{"comptoir-available"}`)
+--                           while the strings sat under `[comptoir]` with their prefix still on them,
+--                           so the engine resolved nothing and the window read "Unknown key" from top
+--                           to bottom. Captions are now `{"comptoir.<key>"}`, the reason and group
+--                           keys are literals in `REASON_KEYS` / `GROUP_KEYS` instead of
+--                           concatenations, and `tools/check_locale.py` refuses the old shape at
+--                           `make check` (ADR 0053)
 -- Usages:      required by control.lua, wired to on_gui_opened / on_gui_closed / on_gui_click /
 --              on_gui_text_changed; the pure part lives in scripts/gui/format.lua
 -- Notes:       THE WINDOW IS NOT TESTABLE HEADLESS (ADR 0050). The measured prerequisite is the
@@ -104,36 +111,55 @@ local windows = {}
 -- as an on_gui_closed in the same tick; ignoring it is what keeps the frame on screen (ADR 0050).
 local self_closed_tick = {}
 
--- Every reason a module can hand back, so `locale/*/strings.cfg` can be audited against one list
--- instead of against a grep of the call sites. A reason that is not here still prints (as its key):
--- a missing translation is a failure to see, never a silent fallback (A21).
-M.REASONS = {
-  "unknown_contract",
-  "not_offered",
-  "no_free_slot",
-  "escrow_unavailable",
-  "not_accepted",
-  "in_flight",
-  "unknown_state",
-  "no_hub",
-  "no_entity",
-  "no_inventory",
-  "not_enough_stock",
-  "stock_changed",
-  "flight_in_progress",
-  "elevator_rising",
-  "elevator_away",
-  "elevator_descending",
-  "insufficient_credits",
-  "nothing_to_trade",
-  "empty_pool",
-  "no_room",
-  "payment_refused",
-  "no_stock",
-  "shop_cannot_pay",
-  "bad_count",
-  "unknown_action",
+-- The catalogue's three groups, one literal key each: the character line of the header is a localised
+-- string, and the family prefix lives in the section name (`[comptoir]`), so a key is the bare name
+-- and the Lua side asks for `{"comptoir.<key>"}` (ADR 0053). Same for the reasons below: `_` became
+-- `-`, because a locale key is `[a-z0-9-]+` and a dot inside a key would read as a section separator.
+M.GROUP_KEYS = {
+  chemistry = { "comptoir.group-chemistry" },
+  electronics = { "comptoir.group-electronics" },
+  logistics = { "comptoir.group-logistics" },
 }
+
+-- Every reason a module can hand back, with the caption it prints, one literal key per code.
+-- WRITTEN OUT, NEVER BUILT WITH `"comptoir.reason-" .. reason`: a concatenated key is invisible to
+-- `tools/check_locale.py`, and that is how the lot-b regression shipped a window full of "Unknown
+-- key" (ADR 0053). The code keeps its `_` — it is the modules' vocabulary — the key uses `-`.
+M.REASON_KEYS = {
+  unknown_contract = { "comptoir.reason-unknown-contract" },
+  not_offered = { "comptoir.reason-not-offered" },
+  no_free_slot = { "comptoir.reason-no-free-slot" },
+  escrow_unavailable = { "comptoir.reason-escrow-unavailable" },
+  not_accepted = { "comptoir.reason-not-accepted" },
+  in_flight = { "comptoir.reason-in-flight" },
+  unknown_state = { "comptoir.reason-unknown-state" },
+  no_hub = { "comptoir.reason-no-hub" },
+  no_entity = { "comptoir.reason-no-entity" },
+  no_inventory = { "comptoir.reason-no-inventory" },
+  not_enough_stock = { "comptoir.reason-not-enough-stock" },
+  stock_changed = { "comptoir.reason-stock-changed" },
+  flight_in_progress = { "comptoir.reason-flight-in-progress" },
+  elevator_rising = { "comptoir.reason-elevator-rising" },
+  elevator_away = { "comptoir.reason-elevator-away" },
+  elevator_descending = { "comptoir.reason-elevator-descending" },
+  insufficient_credits = { "comptoir.reason-insufficient-credits" },
+  nothing_to_trade = { "comptoir.reason-nothing-to-trade" },
+  empty_pool = { "comptoir.reason-empty-pool" },
+  no_room = { "comptoir.reason-no-room" },
+  payment_refused = { "comptoir.reason-payment-refused" },
+  no_stock = { "comptoir.reason-no-stock" },
+  shop_cannot_pay = { "comptoir.reason-shop-cannot-pay" },
+  bad_count = { "comptoir.reason-bad-count" },
+  unknown_action = { "comptoir.reason-unknown-action" },
+}
+
+-- The codes in a stable order, for the bench: derived from the table above, so the list of reasons and
+-- the list of captions cannot drift apart.
+M.REASONS = {}
+for code in pairs(M.REASON_KEYS) do
+  M.REASONS[#M.REASONS + 1] = code
+end
+table.sort(M.REASONS)
 
 -- The cheapest item of the catalogue: the ceiling the shared quantity field is clamped to.
 local CHEAPEST = format.price_order()[1]
@@ -247,8 +273,8 @@ local function build(player)
   reserved.style.horizontal_align = "right"
 
   local tabbar = root.add({ type = "flow", name = TABS, direction = "horizontal" })
-  tabbar.add({ type = "button", name = TAB_CONTRACTS, caption = { "comptoir-tab-contracts" } })
-  tabbar.add({ type = "button", name = TAB_SHOP, caption = { "comptoir-tab-shop" } })
+  tabbar.add({ type = "button", name = TAB_CONTRACTS, caption = { "comptoir.tab-contracts" } })
+  tabbar.add({ type = "button", name = TAB_SHOP, caption = { "comptoir.tab-shop" } })
 
   root.add({ type = "flow", name = BODY_CONTRACTS, direction = "vertical" })
   root.add({ type = "flow", name = BODY_SHOP, direction = "vertical" })
@@ -315,12 +341,12 @@ local function draw_contract_row(body, contract, ctx, storage, tick)
   left.add({
     type = "label",
     name = "contracts-" .. contract.id .. "-quantity",
-    caption = { "comptoir-quantity-of", texts.quantity, { "item-name." .. contract.item } },
+    caption = { "comptoir.quantity-of", texts.quantity, { "item-name." .. contract.item } },
   })
   left.add({
     type = "label",
     name = "contracts-" .. contract.id .. "-reserve",
-    caption = { "comptoir-reserve", texts.reserve },
+    caption = { "comptoir.reserve", texts.reserve },
   })
 
   local right = row.add({ type = "flow", direction = "vertical" })
@@ -328,7 +354,7 @@ local function draw_contract_row(body, contract, ctx, storage, tick)
   right.add({
     type = "label",
     name = "contracts-" .. contract.id .. "-payout",
-    caption = { "comptoir-money", texts.payout },
+    caption = { "comptoir.money", texts.payout },
   })
   local timeline = right.add({ type = "flow", direction = "horizontal" })
   local bar = timeline.add({ type = "progressbar", name = "contracts-" .. contract.id .. "-bar", value = texts.fraction })
@@ -344,16 +370,16 @@ local function draw_contract_row(body, contract, ctx, storage, tick)
   local button = row.add({ type = "button", name = "contracts-" .. contract.id .. "-action", caption = "" })
   button.style.width = COL_ACTION
   if action == "accept" then
-    button.caption = { "comptoir-action-accept" }
+    button.caption = { "comptoir.action-accept" }
     button.enabled = allowed == true
   elseif contract.state == contracts.IN_FLIGHT then
-    button.caption = { "comptoir-action-in-flight" }
+    button.caption = { "comptoir.action-in-flight" }
     button.enabled = false
   else
     -- How many the counter holds of what the contract asks for, capped at the quantity: a number above
     -- the order would announce a delivery that cannot happen.
     local count = math.min(stock or 0, contract.quantity)
-    button.caption = { "comptoir-action-dispatch", format.grouped(count) }
+    button.caption = { "comptoir.action-dispatch", format.grouped(count) }
     button.enabled = allowed == true
   end
   return row
@@ -362,7 +388,7 @@ end
 local function draw_empty_slot(body, slot)
   local row = body.add({ type = "flow", name = "contracts-slot-" .. slot .. "-empty", direction = "horizontal" })
   row.style.height = ROW_HEIGHT
-  row.add({ type = "label", name = "contracts-slot-" .. slot .. "-empty-label", caption = { "comptoir-empty-slot" } })
+  row.add({ type = "label", name = "contracts-slot-" .. slot .. "-empty-label", caption = { "comptoir.empty-slot" } })
   return row
 end
 
@@ -376,18 +402,18 @@ local function draw_shop_row(body, item, ctx, quantity)
   local name = row.add({ type = "label", name = "counter-" .. item .. "-name", caption = { "item-name." .. item } })
   name.style.width = COL_ITEM
 
-  local price = row.add({ type = "label", name = "counter-" .. item .. "-price", caption = { "comptoir-money", format.grouped(quote.buy_price) } })
+  local price = row.add({ type = "label", name = "counter-" .. item .. "-price", caption = { "comptoir.money", format.grouped(quote.buy_price) } })
   price.style.width = COL_PRICE
   price.style.horizontal_align = "right"
 
-  local credits = row.add({ type = "label", name = "counter-" .. item .. "-buy-back", caption = { "comptoir-buy-back", format.grouped(quote.sell_credits) } })
+  local credits = row.add({ type = "label", name = "counter-" .. item .. "-buy-back", caption = { "comptoir.buy-back", format.grouped(quote.sell_credits) } })
   credits.style.width = COL_CREDITS
   credits.style.horizontal_align = "right"
 
   local buy_enabled, sell_enabled = shop_gates(ctx, item, quantity)
-  local buy = row.add({ type = "button", name = "counter-" .. item .. "-buy", caption = { "comptoir-buy" } })
+  local buy = row.add({ type = "button", name = "counter-" .. item .. "-buy", caption = { "comptoir.buy" } })
   buy.enabled = buy_enabled
-  local sell = row.add({ type = "button", name = "counter-" .. item .. "-sell", caption = { "comptoir-sell" } })
+  local sell = row.add({ type = "button", name = "counter-" .. item .. "-sell", caption = { "comptoir.sell" } })
   sell.enabled = sell_enabled
   return row
 end
@@ -396,13 +422,13 @@ local function draw_shop(body, ctx, player)
   local quantity = quantity_of(player.index)
 
   local line = body.add({ type = "flow", name = QUANTITY_LINE, direction = "horizontal" })
-  line.add({ type = "label", name = QUANTITY_LABEL, caption = { "comptoir-quantity-label" } })
+  line.add({ type = "label", name = QUANTITY_LABEL, caption = { "comptoir.quantity-label" } })
   local field = line.add({ type = "textfield", name = QUANTITY_FIELD, text = tostring(quantity), numeric = true })
   field.style.width = FIELD_WIDTH
   for _, preset in ipairs({ "1", "10", "100", "stack" }) do
     local button = line.add({ type = "button", name = "counter-quantity-" .. preset, caption = "" })
     if preset == "stack" then
-      button.caption = { "comptoir-preset-stack" }
+      button.caption = { "comptoir.preset-stack" }
     else
       button.caption = preset
     end
@@ -435,13 +461,17 @@ local function render(storage, player, window)
   local character = child_named(line, HEADER_CHARACTER)
   local primary, secondary = format.character(ctx.company)
   local text = child_named(character, HEADER_TEXT)
-  text.caption = { "comptoir-character", { "comptoir-group-" .. primary }, { "comptoir-group-" .. secondary } }
+  text.caption = {
+    "comptoir.character",
+    M.GROUP_KEYS[primary] or primary,
+    M.GROUP_KEYS[secondary] or secondary,
+  }
   text.style.font_color = format.colour_of(ctx.company.id)
   child_named(character, HEADER_ICON).sprite = "item/" .. format.group_item(primary)
 
   local numbers = child_named(header, HEADER_NUMBERS)
-  child_named(numbers, HEADER_AVAILABLE).caption = { "comptoir-available", format.grouped(ledger.available(ctx.state)) }
-  child_named(numbers, HEADER_RESERVED).caption = { "comptoir-reserved", format.grouped(ctx.state.reserved) }
+  child_named(numbers, HEADER_AVAILABLE).caption = { "comptoir.available", format.grouped(ledger.available(ctx.state)) }
+  child_named(numbers, HEADER_RESERVED).caption = { "comptoir.reserved", format.grouped(ctx.state.reserved) }
 
   -- Tabs: the active one is disabled, which is the whole of "the active tab reads as active" without
   -- a style (mission: no styling).
@@ -542,12 +572,18 @@ function M.on_closed(storage, event)
   windows[event.player_index] = nil
 end
 
--- A refused action says why, in the player's language, from one key per reason.
+-- A refused action says why, in the player's language, from one key per reason. A code this table does
+-- not know is printed as the raw code: a visible gap (design.md §5), never a key the engine cannot
+-- resolve into a window full of "Unknown key" (ADR 0053).
+local function reason_caption(reason)
+  return M.REASON_KEYS[reason] or reason
+end
+
 local function refuse(player, reason)
   if reason == nil then
     return
   end
-  player.print({ "comptoir-refused", { "comptoir-reason-" .. reason } })
+  player.print({ "comptoir.refused", reason_caption(reason) })
 end
 
 local function accept(storage, player, ctx, contract_id)
@@ -574,9 +610,9 @@ local function trade(storage, player, ctx, item, action_name)
   local ok, reason, count, total = trade_fn(ctx.state, ctx.company, ctx.entity, item, quantity)
   if ok then
     player.print({
-      action_name == "buy" and "comptoir-bought" or "comptoir-sold",
+      action_name == "buy" and { "comptoir.bought" } or { "comptoir.sold" },
       format.grouped(count),
-      { "comptoir-money", format.grouped(total) },
+      { "comptoir.money", format.grouped(total) },
     })
   else
     refuse(player, reason)
@@ -667,7 +703,7 @@ function M.on_click(storage, event)
     -- say so rather than act on a counter we can no longer identify.
     destroy(player)
     windows[event.player_index] = nil
-    player.print({ "comptoir-stale-window" })
+    player.print({ "comptoir.stale-window" })
     return
   end
 

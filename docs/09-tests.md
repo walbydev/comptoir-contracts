@@ -63,7 +63,7 @@ prevent.
 | A18 | never a contract with a locked recipe | 1 000 generations × unlocked-set = ∅ | L2 | cadrage |
 | A19 | `available + reserved = total` | asserted after every mutation in the L2 scenarios | L2 | cadrage |
 | A20 | nothing truncated at 100 % and 150 % GUI scale | **by eye**, two screenshots, recorded in §5 | **L3** | Philippe |
-| A21 | every string in `locale/en` and `locale/fr` | key-parity scan: the two files must have identical key sets; a missing key fails | **L1** | cadrage |
+| A21 | every string in `locale/en` and `locale/fr` | two gates: `tools/check_locale.py` at `make check` (every `{"comptoir.<key>"}` reference exists in **both** files, every declared key is printed somewhere, every key name is `[a-z0-9-]+` — ADR 0053) and B1-gui-pure, which hands four of the window's keys to the engine and reads the rendered text back | **L1 + L2** | cadrage |
 | A22 | a button is never enabled when the action would fail | **by eye** (the enabled state is engine-side); the *state* that feeds it is asserted in L2 | L3 + L2 | Philippe + cadrage |
 | A23 | field and presets never disagree | **by eye** for the display; the underlying value is asserted in L2 | L3 + L2 | Philippe + cadrage |
 | A24 | a preset is clamped to what the balance allows | **by eye** for the display; the clamp value is asserted in L2 | L3 + L2 | Philippe + cadrage |
