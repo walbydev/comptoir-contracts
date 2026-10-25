@@ -78,6 +78,7 @@ prevent.
 | B3-feedback | an action writes one line with quantity and amount | buy 10, read the line back, assert quantity and total | L2 | cadrage |
 | B4-clock | the countdown stops when the last window closes | open then close, run 200 ticks, assert no handler ran | L2 | cadrage |
 | B5-sprite | the artwork matches the prototype | `make check-artwork`: 288x288 RGBA, 9 tiles, boxes ±4.5, scale 1, packaged | L1 | cadrage |
+| B6-handover | the inventory button hands over exactly once | flag set then consumed; a second open in the same tick passes through; a stale flag cannot swallow a real open | L2 | cadrage |
 | A4 | — | **withdrawn** (no conversion exists) | — | — |
 | A8 | add-ons install, run, and are removed cleanly | **out of v1**: no add-on exists. Returns with the first add-on | — | — |
 | A11 | bankruptcy is terminal, the company is resold | **out of v1**: parked (`0018`) | — | — |
