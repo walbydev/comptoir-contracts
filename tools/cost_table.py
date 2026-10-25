@@ -111,6 +111,105 @@ class Cost:
         self.memo_energy: dict[str, float] = {}
         self.unresolved: set[str] = set()
         self.stack: set[str] = set()
+        self.memo_fluid: dict[str, bool] = {}
+        self.memo_depth: dict[str, int] = {}
+        self.recipe_tech = self._recipe_technologies(data)
+
+    @staticmethod
+    def _recipe_technologies(data: dict) -> dict[str, dict]:
+        """recipe name -> the technology that unlocks it (with its science packs)."""
+        out: dict[str, dict] = {}
+        for tech in (data.get("technology") or {}).values():
+            for effect in tech.get("effects") or []:
+                if effect.get("type") == "unlock-recipe":
+                    out.setdefault(effect["recipe"], tech)
+        return out
+
+    def _tech_of(self, item: str) -> dict | None:
+        recipe = self._pick(item)
+        if not recipe:
+            return None
+        return self.recipe_tech.get(recipe["name"])
+
+    def science_packs(self, item: str) -> list[str]:
+        tech = self._tech_of(item)
+        if not tech:
+            return []
+        unit = tech.get("unit") or {}
+        packs = []
+        for ing in unit.get("ingredients") or []:
+            # the dump writes these as ["automation-science-pack", 1]
+            if isinstance(ing, (list, tuple)):
+                packs.append(str(ing[0]))
+            elif isinstance(ing, dict):
+                packs.append(ing["name"])
+        return packs
+
+    def tier(self, item: str) -> int:
+        """Tier = how deep the item sits in the oil chain. Measured, not chosen.
+
+        The first attempt used science packs ("the highest pack that unlocks the recipe")
+        and it lies: in base 2.1.23, `advanced-circuit` is unlocked by a technology that
+        costs only red and green science, while the item needs plastic, therefore oil, so a
+        contract could ask for one before the player can possibly build it. What gates an
+        item is not the colour of its research, it is whether the chain is reachable:
+
+            0  no fluid anywhere in the tree            -> tier 1 (pre-oil)
+            1  needs an oil product directly            -> tier 2
+            2  needs an item that needs oil             -> tier 2
+            3+ needs a chain of oil-based items         -> tier 3
+        """
+        depth = self.oil_depth(item)
+        if depth == 0:
+            return 1
+        if depth <= 2:
+            return 2
+        return 3
+
+    def oil_depth(self, item: str) -> int:
+        """0 if the recipe tree contains no fluid, else 1 + the deepest oiled ingredient."""
+        if item in RAW_WEIGHTS:
+            return 1 if item == "crude-oil" else 0
+        if item in self.memo_depth:
+            return self.memo_depth[item]
+        if item in self.stack:
+            return 0
+        recipe = self._pick(item)
+        if not recipe:
+            return 0
+        self.stack.add(item)
+        depth = 0
+        for ing in recipe.get("ingredients") or []:
+            if ing.get("type") == "fluid" and ing["name"] != "water":
+                depth = max(depth, 1)
+            else:
+                d = self.oil_depth(ing["name"])
+                depth = max(depth, d + 1 if d > 0 else 0)
+        self.stack.discard(item)
+        self.memo_depth[item] = depth
+        return depth
+
+    def uses_fluid(self, item: str) -> bool:
+        """True if any fluid appears anywhere in the recipe tree (i.e. oil is required)."""
+        if item in RAW_WEIGHTS:
+            return item in ("crude-oil", "water")
+        if item in self.memo_fluid:
+            return self.memo_fluid[item]
+        if item in self.stack:
+            return False
+        recipe = self._pick(item)
+        if not recipe:
+            return False
+        self.stack.add(item)
+        fluid = False
+        for ing in recipe.get("ingredients") or []:
+            if ing.get("type") == "fluid" and ing["name"] != "water":
+                fluid = True
+            elif self.uses_fluid(ing["name"]):
+                fluid = True
+        self.stack.discard(item)
+        self.memo_fluid[item] = fluid
+        return fluid
 
     def _pick(self, name: str) -> dict | None:
         """Choose the canonical recipe for an item.
@@ -194,8 +293,11 @@ class Cost:
                 "energy_kj": round(self.memo_energy.get(name, 0.0), 1),
                 "payout": math.ceil(credits * PAYOUT_FACTOR),
                 "price": math.ceil(credits * PRICE_FACTOR),
+                "tier": self.tier(name),
+                "fluid": self.uses_fluid(name),
+                "packs": ",".join(self.science_packs(name)),
             })
-        rows.sort(key=lambda r: r["credits"])
+        rows.sort(key=lambda r: (r["tier"], r["credits"]))
         return rows
 
 
@@ -218,16 +320,19 @@ def main() -> int:
     rows = calc.report(names)
 
     if args.markdown:
-        print("| Item | Raw | Credits | s (x1) | kJ | Payout | Shop price |")
-        print("|---|---|---|---|---|---|---|")
+        print("| Item | Tier | Fluid | Credits | s (x1) | kJ | Payout | Shop price |")
+        print("|---|---|---|---|---|---|---|---|")
         for r in rows:
-            print(f"| `{r['item']}` | {r['raw']} | {r['credits']} | {r['seconds']} | "
-                  f"{r['energy_kj']} | {r['payout']} | {r['price']} |")
+            print(f"| `{r['item']}` | {r['tier']} | {'yes' if r['fluid'] else 'no'} | "
+                  f"{r['credits']} | {r['seconds']} | {r['energy_kj']} | "
+                  f"{r['payout']} | {r['price']} |")
     else:
         for r in rows:
-            print(f"{r['item']:<24} raw={r['raw']:>8} cr={r['credits']:>5} "
+            print(f"{r['item']:<24} t{r['tier']} fluid={str(r['fluid']):<5} "
+                  f"raw={r['raw']:>8} cr={r['credits']:>5} "
                   f"s={r['seconds']:>6} kJ={r['energy_kj']:>8} "
-                  f"payout={r['payout']:>5} price={r['price']:>5}")
+                  f"payout={r['payout']:>5} price={r['price']:>5} "
+                  f"packs={r['packs']}")
 
     if calc.unresolved:
         print(f"\nunresolved (cost 0, check by hand): {sorted(calc.unresolved)}",

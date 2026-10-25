@@ -17,8 +17,8 @@ Everything else is **parked as evolution**, written in `adr/` and out of v1: the
 bounties, the printing right, recurring and decaying contracts, debt and resale, dedicated hub sites,
 buying technologies, credit transfers, and the four-mod set.
 
-State: **blocks 1–5 written** (2026-10-25) — 57 decisions (4 withdrawn), 32 ADRs,
-15 acceptance criteria, **no question left blocking v1**, 15 parked with their features. The
+State: **blocks 1–5 written** (2026-10-25) — 60 decisions (4 withdrawn), 34 ADRs,
+18 acceptance criteria, **no question left blocking v1**, 15 parked with their features. The
 repository holds the project definition, not code yet. No development before tag `v0.1-cadrage`.
 
 | Document | Purpose |

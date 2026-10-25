@@ -42,24 +42,24 @@ document exists in a repository rather than in someone's memory.
 
 Materials only, no buildings (decided 2026-10-25).
 
-| Item | Raw | Credits | s (speed 1) | kJ | Payout | Shop price |
-|---|---|---|---|---|---|---|
-| `copper-cable` | 0.5 | 5 | 0.25 | 37.5 | 6 | 8 |
-| `iron-plate` | 1.0 | 10 | 3.2 | 288 | 12 | 15 |
-| `copper-plate` | 1.0 | 10 | 3.2 | 288 | 12 | 15 |
-| `pipe` | 1.0 | 10 | 0.5 | 75 | 12 | 15 |
-| `stone-brick` | 2.0 | 20 | 3.2 | 288 | 23 | 30 |
-| `iron-gear-wheel` | 2.0 | 20 | 0.5 | 75 | 23 | 30 |
-| `electronic-circuit` | 2.5 | 25 | 0.5 | 75 | 29 | 38 |
-| `steel-plate` | 5.0 | 50 | 16.0 | 1440 | 58 | 75 |
-| `engine-unit` | 9.0 | 90 | 10.0 | 1500 | 104 | 135 |
-| `plastic-bar` | 22.7 | 228 | 0.5 | 90 | 263 | 342 |
-| `sulfur` | 33.3 | 334 | 0.5 | 90 | 385 | 501 |
-| `electric-engine-unit` | 41.3 | 413 | 10.0 | 1800 | 475 | 620 |
-| `advanced-circuit` | 52.4 | 525 | 6.0 | 900 | 604 | 788 |
-| `battery` | 69.1 | 691 | 4.0 | 720 | 795 | 1037 |
-| `low-density-structure` | 143.6 | 1437 | 15.0 | 2250 | 1653 | 2156 |
-| `processing-unit` | 171.7 | 1717 | 10.0 | 1800 | 1975 | 2576 |
+| Item | Raw | Credits | s (speed 1) | kJ | Payout | Shop price | Tier |
+|---|---|---|---|---|---|---|---|
+| `copper-cable` | 0.5 | 5 | 0.25 | 37.5 | 6 | 8 | 1 |
+| `iron-plate` | 1.0 | 10 | 3.2 | 288 | 12 | 15 | 1 |
+| `copper-plate` | 1.0 | 10 | 3.2 | 288 | 12 | 15 | 1 |
+| `pipe` | 1.0 | 10 | 0.5 | 75 | 12 | 15 | 1 |
+| `stone-brick` | 2.0 | 20 | 3.2 | 288 | 23 | 30 | 1 |
+| `iron-gear-wheel` | 2.0 | 20 | 0.5 | 75 | 23 | 30 | 1 |
+| `electronic-circuit` | 2.5 | 25 | 0.5 | 75 | 29 | 38 | 1 |
+| `steel-plate` | 5.0 | 50 | 16.0 | 1440 | 58 | 75 | 1 |
+| `engine-unit` | 9.0 | 90 | 10.0 | 1500 | 104 | 135 | 1 |
+| `plastic-bar` | 22.7 | 228 | 0.5 | 90 | 263 | 342 | 2 |
+| `sulfur` | 33.3 | 334 | 0.5 | 90 | 385 | 501 | 2 |
+| `electric-engine-unit` | 41.3 | 413 | 10.0 | 1800 | 475 | 620 | 2 |
+| `advanced-circuit` | 52.4 | 525 | 6.0 | 900 | 604 | 788 | 2 |
+| `battery` | 69.1 | 691 | 4.0 | 720 | 795 | 1037 | 2 |
+| `low-density-structure` | 143.6 | 1437 | 15.0 | 2250 | 1653 | 2156 | 2 |
+| `processing-unit` | 171.7 | 1717 | 10.0 | 1800 | 1975 | 2576 | 3 |
 
 The spread from copper cable to processing unit is **343×**, and that is the truth of the game: a
 processing unit really is worth hundreds of cables. A single credit currency handled it without a
@@ -86,11 +86,28 @@ per-tier multiplier, which is what we wanted.
 
 Numbers 1 and 2 are design taste. Number 3 is arithmetic, and it moves with them.
 
-## 5. What is still open at the end of block 5
+## 6. What gates a contract — measured, not chosen
 
-- The **three tier thresholds** (which technologies open tier 2 and tier 3) — a design question, not
-  a number, and it belongs with the contract generator.
-- Whether the counter should also **sell finished goods it never bought** (no: the list above is the
-  whole catalogue).
-- The exact **quantities per contract** (a band around 50–500 units per contract, depending on the
-  item's price) — to be derived once the endowment is fixed.
+The tier of an item is **how deep it sits in the oil chain**, because that is what decides whether a
+player can build it. Science packs were tried first and they lie: in base 2.1.23 `advanced-circuit` is
+unlocked by a technology costing only red and green science, while the item needs plastic — a contract
+would have asked for it with no refinery on the map.
+
+| Tier | Meaning | Items |
+|---|---|---|
+| **1** | no fluid anywhere in the recipe tree — buildable before oil | 9: cable, both plates, pipe, brick, gear, circuit, steel, engine |
+| **2** | one oil step, or one item away from oil | 6: plastic, sulfur, electric engine, advanced circuit, battery, LDS |
+| **3** | a chain of oil-based items | 1: processing unit |
+
+The counter itself is **tier 1 by construction**: its recipe contains no oil-derived item (ADR 0033),
+so the loop exists before the refinery does.
+
+Tier 3 holds a single item today. That is the data, not a mistake: only the processing unit sits three
+oil steps deep. The catalogue grows by adding items, and the tier follows automatically.
+
+## 7. What is still open at the end of block 5
+
+- The **cadence** of refill (Q53): immediately when a slot frees, or on a timer.
+- The exact **quantities per contract** — a band derived from a target payout, to be fixed with the
+  endowment.
+- Whether the three numbers of §4 are confirmed.

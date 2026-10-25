@@ -1,7 +1,7 @@
 # Framing — Company contracts (Factorio 2.1 mod set)
 
 > Version: 0.3 · Date: 2026-10-25 · Requested by: Philippe Ryf
-> Status: **blocks 1–5 written** (2026-10-25) — 57 decisions recorded (4 withdrawn), 32 ADRs, 15
+> Status: **blocks 1–5 written** (2026-10-25) — 60 decisions recorded (4 withdrawn), 34 ADRs, 18
 > acceptance criteria, **no question left blocking v1**, 15 parked with their features.
 > Repository: `walbydev/comptoir-contracts` (public GitHub, MIT) — created and verified 2026-10-25.
 > No development before tag `v0.1-cadrage`.
@@ -157,6 +157,9 @@ onto what already exists.
 | D53 | Orbital power | **Parked as evolution.** When it returns: one receiver prototype, one up-going order type, one technology — and the failure mode of a lost shipment. Not v1 | ADR `0030`, `0031` |
 | D54 | Counter spread | The counter **sells at cost × 1.5 and buys at cost**. The 50 % spread is its margin and the price of the safety valve. No pair of operations is profitable in both directions, so no arbitrage exists | ADR `0032` |
 | D55 | v1 catalogue | The counter sells **materials only, no buildings**: 16 items from copper cable to processing unit, priced from the game's recipes (`docs/05-price-table.md`) | ADR `0032`, `tools/cost_table.py` |
+| D56 | Counter placement | The counter is **built before oil**: its recipe contains **no oil-derived item**, one technology with red and green science, about 600 raw units | ADR `0033` |
+| D57 | Tiers | A tier is **not a padlock**: it is read from the item's **oil-chain depth** (no fluid → 1, one oil step → 2, a chain → 3), so the "three tiers" of `0025` become a commercial band. The real gate is the player's research | ADR `0034` |
+| D58 | Contract generation | Pool = catalogue ∩ research unlocked ∩ tier; weighted pick by the company's character; quantity from a payout band; deadline = `max(10 min, qty × machine_seconds / 2)`; **seeded RNG per company**, never `math.random` | ADR `0034` |
 
 ### 1.2 Success indicators (observable) — **accepted by Philippe on 2026-10-25**
 
@@ -293,6 +296,9 @@ API for third-party mods beyond the add-on interface, final art.
 | A13 | An expired contract moves **exactly the reserved amount** from the cooperative to the offering company; delivery releases the hold; the reserved amount is **visible before acceptance** |
 | A14 | From a cooperative at **zero**, selling goods to a hub (with no contract active) restores a spendable balance and allows a contract to be accepted again — no deadlock |
 | A15 | **Buying then immediately reselling always loses credits** (counter spread, D54): no pair of operations is profitable in both directions |
+| A16 | **No ingredient of the counter's recipe has oil anywhere in its tree** (D56), checked with the same measurement that builds the price table |
+| A17 | With a tier-1 catalogue, **every item offered can be produced with red/green research and no fluid** (D57) |
+| A18 | **No generated contract ever contains an item whose recipe is not unlocked** for the force (D58) — a trap that steals an escrow would fail the suite |
 
 ---
 
@@ -479,7 +485,8 @@ resolved with its feature, not before.
 | ~~Q50~~ | ~~Family prefix?~~ → **`comptoir`**: mod `comptoir-contracts`, repo renamed, package `comptoir-contracts_<version>.zip` (D50, ADR `0029`) | — | Philippe | **settled 2026-10-25** |
 | Q09 | Exact publishing procedure on `mods.factorio.com` (upload, moderation, delay) | `[to verify]` — no credible release date without it | cadrage (research) | block 7 |
 | Q51 | **Three balancing numbers** to arbitrate (block 5): the scale (credits per raw unit, proposed 10), the escrow rate (proposed 20 %), the initial endowment (proposed 3 000). The table itself is measured, not chosen | They set the feel of the whole economy and the size of every number the player reads | Philippe | block 5 |
-| Q52 | **The three tier thresholds**: which technologies open tier 2 and tier 3 | Tiers decide which items a contract can ask for; set them too high and tier 1 is a dead end | Philippe | block 5 |
+| ~~Q52~~ | ~~The three tier thresholds~~ → **dissolved**: a tier is read from the item's oil-chain depth, not from a technology (D57). The counter itself is gated by one early red/green technology (D56) | — | Philippe | **settled 2026-10-25** |
+| Q53 | **Cadence**: does an empty slot refill as soon as a contract is completed or expired, or does the catalogue refresh on a timer? | Immediate is simpler and needs no clock; a timer creates a reason to come back, and a reason to wait | Philippe | block 5 |
 
 ---
 
