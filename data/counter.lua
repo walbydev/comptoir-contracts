@@ -7,13 +7,13 @@
 -- Author:      Philippe Ryf
 -- Created:     2026-10-25
 -- Revisions:   2026-10-25 — initial prototype: inventory size from config/balance.lua
+--              2026-10-25 — power note removed: the counter draws nothing (D75, ADR 0046)
 -- Usages:      required by data.lua; place_result of the item defined in data/item.lua
--- Notes:       POWER. ADR 0030 asks for a small electric draw on this building. Measured 2026-10-25
---              on 2.1.23: a `container` accepts an `energy_source` key in the data stage and drops
---              it silently — at runtime the prototype has no `energy_source`, the entity has no
---              `electric_energy_source_prototype`, and `energy_usage` is nil. A container cannot
---              carry power. That is a framing conflict (0030 vs 0016), not an oversight: it needs an
---              ADR, and until then this prototype has no power field rather than a decorative one.
+-- Notes:       POWER. The counter consumes no energy at all (D75, ADR 0045/0046): a `container` has no
+--              energy model — measured 2026-10-25 on 2.1.23, an `energy_source` key is dropped
+--              silently at the data stage, the runtime prototype has none, the entity has no
+--              `electric_energy_source_prototype` and `energy_usage` is nil. So there is no pole to
+--              place, no network to connect to, and no "unpowered" state to display.
 -- Licence:     MIT (see LICENSE)
 
 local balance = require("__comptoir-contracts__/config/balance")
