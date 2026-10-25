@@ -1,13 +1,13 @@
 # factorio-contrats
 
-A Factorio 2.1 mod — **company contracts** through a commercial hub (space elevator plus a
+A Factorio 2.1 **mod set** — **company contracts** through a commercial hub (space elevator plus a
 spaceport). Delivered contracts pay credits and/or technologies; credits buy stacks of materials or
 technologies without research.
 
 > Guiding rule: **the hub complements local production, it never replaces it.**
 
-**State: framing in progress (block 1).** This repository holds the project definition, not code yet.
-No development before tag `v0.1-cadrage`.
+**State: framing in progress (blocks 1–3 consolidated, 24 decisions, 14 questions open).** This
+repository holds the project definition, not code yet. No development before tag `v0.1-cadrage`.
 
 | Document | Purpose |
 |---|---|
@@ -15,6 +15,18 @@ No development before tag `v0.1-cadrage`.
 | [`adr/`](adr/) | architecture decisions, numbered, never rewritten |
 | [`docs/entrants/`](docs/entrants/) | frozen handoff brief (input material, original language) |
 | [`spike/`](spike/) | throwaway prototypes, dated |
+
+## The set
+
+| Mod | Role | Trace |
+|---|---|---|
+| `company-contracts` | **core**: hub + elevator, spaceport, cargo warehouses bound 1:1 to a contract, contracts, credits and credit-item, conversion, ledger, shop, curated technologies, tiers | ADR 0010, 0004, 0006, 0002 |
+| `company-contracts-bank` | add-on: interest, AFK gating on production, deposits | ADR 0007, 0008 |
+| `company-contracts-bounties` | add-on: nests, worms, science milestones | ADR 0009 |
+| `company-contracts-mint` | add-on: the printing right | ADR 0012 |
+
+Add-ons add **behaviour, never prototypes**, so each one stays removable from an existing save. The
+core never knows its add-ons: the dependency arrow points one way only — ADR 0013.
 
 ## Decisions already made
 
@@ -25,14 +37,21 @@ No development before tag `v0.1-cadrage`.
 | Space Age | plays identically **with and without** the DLC: own prototypes, DLC assets reused when present | ADR 0005 |
 | Forge and licence | public GitHub `walbydev`, MIT | ADR 0003 |
 | Money | integer credits only, fixed face value per item, conversion = fixed fee + degressive rate | ADR 0006 |
-| Bank | deposit/withdraw with regular interest, funded by the hub's margin (funding rule still open — Q15) | ADR 0007 |
+| Bank | **one bank**: players, companies, the colonial federation (which pays contracts and bounties), the bank itself | ADR 0011 |
 | Players | solo and multiplayer; gifting only via items, never a direct credit transfer | framing §2 |
+| Delivery | hub + elevator = interface, spaceport = counterparty, warehouses bound to one contract, fed by inserter **or** robot | ADR 0010 |
+| Packaging | one core mod + optional add-ons | ADR 0013 |
+
+Still open and **not** defaulted: interest funding (Q15), printing: creation or materialisation
+(Q25), goods lost on expiry or destruction (Q24), what funds the federation (Q23), multiplayer
+attribution of activity (Q19-bis), science bounty unit (Q22), repository layout and names (Q27, Q29).
 
 ## Test chain
 
-Target: Factorio **2.1.x**, base only in the MVP. The mod loads and runs **headless**
-(`factorio --version` → 2.1.23 verified), which allows deterministic tests without a graphical
-client. GUI rendering and balancing feel can only be tested in game.
+Target: Factorio **2.1.x**. The mod loads and runs **headless** (`factorio --version` → 2.1.23
+verified), which allows deterministic tests without a graphical client. GUI rendering and balancing
+feel can only be tested in game. `luac` is **not installed**: a syntax error surfaces as a headless
+load failure until Lua 5.2 is built.
 
 ```bash
 make help          # available commands
