@@ -93,6 +93,17 @@ A change is done when:
 
 "The mod works in my game" is not evidence and never closes a criterion.
 
+## 4bis. Environment facts measured while building this harness
+
+| Fact | Consequence |
+|---|---|
+| `game.write_file` does not exist in 2.1.23 | use `helpers.write_file` (measured in `spike/fedora-smoke/`) |
+| A `container` prototype has **no energy field at all** | D49 cannot hold with a container (ADR `0045`, Q58) |
+| `--load` does not exist in 2.1 | the save/load cycle runs as `--benchmark <save> --benchmark-ticks 1`, and the save must live **outside** the mod directory — a `.zip` there is read as a mod |
+| `prototypes.technology[...].unit` is not exposed at runtime | a test cannot read a technology's packs; the tier comes from our generated file |
+| A non-recoverable error can still exit **0** in benchmark mode | the runner greps the log, and never trusts the exit code alone |
+| `luac` is absent on this host | `make check` cannot pass; the syntax check is a headless load, quoted |
+
 ## 5. Release record — the by-eye criteria
 
 Filled by the requester, one block per release. Empty means the release has not been visually accepted.
