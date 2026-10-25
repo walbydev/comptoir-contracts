@@ -1,7 +1,8 @@
 # Framing — Company contracts (Factorio 2.1 mod set)
 
 > Version: 0.3 · Date: 2026-10-25 · Requested by: Philippe Ryf
-> Status: **blocks 1–3 consolidated** — 40 decisions recorded, 21 questions still open.
+> Status: **blocks 1–3 consolidated, v1 scoped** — 43 decisions recorded (4 withdrawn), 25 ADRs,
+> 6 questions still open for v1, 15 parked with their features.
 > Repository: `walbydev/factorio-contrats` (public GitHub, MIT) — created and verified 2026-10-25.
 > No development before tag `v0.1-cadrage`.
 
@@ -101,21 +102,21 @@ onto what already exists.
 | ID | Question | Philippe's decision | Trace |
 |---|---|---|---|
 | D1 | Nature of credits, first answer | **Virtual currency** (1a) — *superseded the same day* | ADR `0001` (superseded) |
-| D1-bis | Credit-item, final answer | **The item exists in the MVP**, convertible **both ways at the hub only**; bearer asset: giftable, storable in a chest | ADR `0004` |
+| D1-bis | Credit-item, final answer | ~~The item exists in the MVP, convertible both ways at the hub only~~ → **superseded by D39: no physical currency at all** | ADR `0004` → `0023` |
 | D2 | Delivery method, first answer | Insertion into the hub or rocket launch — **superseded by D21** (warehouses + elevator, no rocket) | ADR `0010` |
 | D3 | Purchasable technologies | **Curated list** (2a): never the technology that unlocks the hub, never a tech on the critical path | ADR `0002` |
 | D4 | Number of hubs | One hub or several — **settled by D25**: several per surface | ADR `0014` |
 | D5 | Space Age | **Works with and without the DLC**: prototypes owned by the mod, SA assets reused only when the DLC is present | ADR `0005` |
 | D6 | Repository forge | **Public GitHub `walbydev`** (3a), licence **MIT** | ADR `0003` |
 | D7 | Money format | **Integer credits only** — no cents, no fractional credit anywhere, explicit rounding | ADR `0006` |
-| D8 | Credit-item value | **Fixed face value**, forever, set in the price table | ADR `0006` |
-| D9 | Conversion cost | **Fixed fee + amount-dependent (degressive) rate** | ADR `0006` |
-| D10 | Rate improvements | **Two technologies** on rate and fixed fee — *proposal*: researched, not bought (Q16) | ADR `0006` |
-| D11 | Bank | **Deposit, withdraw, regular interest** — funding rule open (Q15) | ADR `0007` |
-| D12 | Players | **Solo and multiplayer**; gifting exists **only via credit-items** | §2 |
+| ~~D8~~ | ~~Credit-item value~~ | **withdrawn** — there is no item | `0023` |
+| ~~D9~~ | ~~Conversion cost~~ | **withdrawn** — there is no conversion | `0023` |
+| ~~D10~~ | ~~Rate improvements~~ | **withdrawn** — no rate to improve; the two technologies leave the scope | `0023` |
+| D11 | Bank | **Parked (post-v1)**: deposit, withdraw, regular interest — with no player wallet (`0023`, `0024`) the bank has no subject in v1 | ADR `0007`, `0025` |
+| ~~D12~~ | ~~Players~~ | **Solo and multiplayer**; ~~gifting exists only via credit-items~~ → **no gifting**: nothing is giftable (D39), nobody but a company holds credits (D40) | §2, `0023`, `0024` |
 | D13 | Game horizon | **2 h speedrun to 100 h long game** — the economy scales by **progression tier**, not wall-clock | §2 |
-| D14 | Passive player | **No income without activity**: interest pauses when nothing is produced | ADR `0008` |
-| D15 | Bounties | **Nests, worms and science packs pay escalating bonuses** | ADR `0009` |
+| D14 | Passive player | **Parked (post-v1)**: no income without activity — with no player wallet and no interest, there is nothing to pause | ADR `0008`, `0025` |
+| D15 | Bounties | **Parked (post-v1)**: nests, worms and science packs pay escalating bonuses | ADR `0009`, `0025` |
 | D16 | Money source | **One treasury funds every credit payout** — contracts, bounties, interest. *Revised by D26*: one treasury **per company** | ADR `0009`, `0014` |
 | D17 | Contract mix | **Most contracts on already-acquired technologies**; a minority are "motivation" contracts requiring the next tier | §3 |
 | D18 | AFK signal | **Production**, not movement — *still open*: attribution in a shared multiplayer factory (Q19-bis) | ADR `0008` |
@@ -135,10 +136,13 @@ onto what already exists.
 | D32 | Contract load | **One to three active contracts per company**, never more; the generator refills up to the cap | ADR `0016` |
 | D33 | Bankruptcy | A company in default **loses every contract and issues none**; the hub is **resold to another company**; the debt stays with the dead company, so the loss lands on the federation | ADR `0018` |
 | D34 | Printing | The research raises **one step up the dial**, for the company that holds it, permanently. One research, one step | ADR `0017` |
-| D35 | Contract kinds | Every contract carries a `kind`: **one-off** (once, with a deadline), **recurring at a fixed price**, **recurring at a decaying price** (`payout_decay`, distinct from the conversion rate of D9). One structure, one generator, one GUI | ADR `0019` |
+| D35 | Contract kinds | Every contract carries a `kind`: **one-off** (once, with a deadline), **recurring at a fixed price**, **recurring at a decaying price** (`payout_decay`). One structure, one generator, one GUI. *v1 keeps the one-off only* (`0025`) | ADR `0019` |
 | D36 | Decay | **Logarithmic**, anchored on the tier, floored at a **minimum price per delivered item** read from the price table; the contract stops being offered at its floor, and the number of occurrences is **derived**, never configured | ADR `0020` |
 | D37 | Company character | A company's catalogue is **homogeneous in kind** (Q41 = reading A) and its identity is the pair **what it wants + how it pays**, displayed on the tooltip and the contract list, with a colour and an icon. The kind changes at most once per tier | ADR `0022` |
 | D38 | Hub sites | *(proposed, awaiting confirmation)* Hubs are built on **dedicated, generated sites** instead of being spaced by a minimum distance; the site is a visible, unmineable resource patch and the check is a build-time script test with refund — the same cost the distance rule already carried | ADR `0021` |
+| D39 | No physical currency | **No credit item at all**: credits are integers on a balance, never an object. No face value, no conversion, no fee, no rate technology, nothing giftable (supersedes D1-bis, D8–D10) | ADR `0023` |
+| D40 | Non-nominative contracts | A contract belongs to the **company**, never to a player; any player may feed and dispatch; the payment goes to the company's balance; the cap is per company | ADR `0024` |
+| D41 | v1 scope | **v1 = one mod**: one hub = one company with its inventory, one contract kind (one-off, deadline), one shop, company balances, an endowment, three tiers, min-distance spacing. Everything else is parked as evolution | ADR `0025` |
 
 ### 1.2 Success indicators (observable) — **accepted by Philippe on 2026-10-25**
 
@@ -162,10 +166,12 @@ by Philippe on 2026-10-25** along with the whole set.
   (ADR 0005), and **both configurations are tested**. "Works in my setup" is not a claim.
 - No final artwork in v0.1: placeholders accepted, art pass later.
 - No replacement of research: no technology on the critical path can be bought at the hub.
-- No second hub per surface, no multi-force, in the MVP (Q05).
-- ~~No credit-item in the MVP~~ — **reversed 2026-10-25** (ADR 0004): the item is in the MVP. What
-  stays forbidden is **creating credits outside the declared channels** — no recipe, no chest trick,
-  no script, no third path.
+- Several hubs per surface are **in** (D25) and **spaced by a minimum distance**; **multi-force is out** in v1.
+- ~~No credit-item in the MVP~~ — reversed 2026-10-25 (ADR `0004`), then **re-reversed the same day**:
+  there is **no physical currency at all** (`0023`). What stays forbidden: **creating credits outside
+  the declared channel** — the issuer's initial endowment and nothing else.
+- **No player wallet in v1** (D39, D40): credits belong to companies. The bank, its deposits and its
+  interest are parked (`0025`).
 
 ---
 
@@ -176,19 +182,21 @@ by Philippe on 2026-10-25** along with the whole set.
 | Population | Reality | Consequence |
 |---|---|---|
 | **Philippe, solo** | the primary user: the mod is built for his games first | every acceptance criterion is measured on his saves (I1–I5) |
-| **Other players, multiplayer** | each player has their **own** ledger and bank; credits are per player, not shared | a conversion and a deposit must be deterministic and re-entrant (same tick, two players) |
+| **Other players, multiplayer** | the catalogue is **shared and single** per company; any player may fill the hub and dispatch; the payment goes to the **company's** balance (D40 — the per-player ledger of the first framing is gone) | two players dispatching in the same tick must be deterministic and re-entrant |
 | **Anonymous portal users** | install from `mods.factorio.com`, never contact us | I4 (understandable without documentation) is a hard requirement, not a nicety |
-| **A player without the set** | **cannot receive credits**: the credit-item has no meaning in a save where the mod is absent | gifting is only meaningful between equipped players — stated in the mod description |
+| **A player without the set** | **cannot use a hub at all**: the hub does not exist in a save without the mod. Nothing travels between saves, and with no item (D39) there is nothing to hand over | the mod is self-contained; no cross-save value |
 
 ### 2.2 The usage gestures
 
-Open the hub · read a contract and its requirements · bind a warehouse · fill it · dispatch · be paid
-in credits and/or a technology · buy materials or a curated technology · **convert credits into
-credit-items** · **convert credit-items into credits** · **deposit into the bank** · **withdraw** ·
-**hand items to another player** (chest, ground, direct insertion). Nothing else.
+Open the hub · read a contract and its requirements · fill the hub's inventory · dispatch · be paid on
+the company's balance · buy materials in the shop. Nothing else.
 
-Every one of these gestures must be reachable from the hub GUI (or the item itself for the item form)
-without reading a wiki.
+*(The gestures of the first framing — binding a warehouse, converting credits into an item and back,
+depositing with the bank, handing items to another player — are **withdrawn**: `0016` removed the
+warehouse, `0023` removed the item and the conversion, `0024` removed the player purse, and with it the
+reason to hand credits over.)*
+
+Every one of these gestures must be reachable from the hub GUI without reading a wiki.
 
 ### 2.3 Time horizon: 2 hours to 100 hours
 
@@ -219,11 +227,18 @@ fee, a bank with four account holders, interest, bounties, a printing right, a t
 configurations. **That is not one mod, that is three** — so the packaging decision (D23) is what makes
 the scope survivable.
 
+**`0025` then cut it.** v1 is **one mod**: the four-mod set is parked, and the list above is kept here
+as the record of what was on the table and what was set aside.
+
 ### 3.2 Core: `company-contracts`
 
-Hub + space elevator, spaceport, **the hub's own inventory** (fed by inserter or logistics robot), the contract generator (one to three active contracts, current-tier majority + motivation minority, dry expiry), virtual credits, the credit-item, two-way conversion with a fixed fee and a degressive rate, the ledger with its accounts, the shop, the curated technology list, the tier model.
+Hub + space elevator, spaceport, **the hub's own inventory** (fed by inserter or logistics robot), the contract generator (one to three active contracts, current-tier majority + motivation minority, deadline expiry), **one-off contracts only**, credits as **company balances** (no item, no conversion), the shop with its single price table, and three progression tiers.
 
-This is the loop that can be measured: **deliver → get paid → convert → buy**.
+**v1 = one mod.** The four-mod set of `0013` (`-bank`, `-bounties`, `-mint`) is **parked**: with no
+player wallet, no bounty channel and no credit line, none of the three add-ons has a subject in v1.
+The core is the whole product until the loop is measured.
+
+This is the loop that can be measured: **deliver → get paid → buy**.
 
 Since D25 the core ships **several hubs**: each one is a company with its own catalogue, its own
 treasury and its own counter. The model is keyed by company from the first line of code — a "single
@@ -251,10 +266,10 @@ API for third-party mods beyond the add-on interface, final art.
 |---|---|
 | A1 | A fresh save honours its **first contract end to end in under 30 minutes**, with the hub and its inventory only — no second building to construct, otherwise the 2-hour horizon never starts |
 | A2 | The hub's inventory accepts insertion by inserter **and** by logistics robot; a contract can only be dispatched when its full quantity is in stock (no partial delivery) |
-| A3 | Converting credits to items and back **never increases the total** (automated test, integers only) |
-| A4 | The conversion fee is displayed **before** confirmation, and I4 holds on that same screen |
+| A3 | The **sum of every company balance plus the federation's** is unchanged by any operation except the initial endowment — no item leg, one number to assert |
+| A4 | **Withdrawn** (no conversion exists) — replaced by: the shop shows the buying price and the selling price of an item **before** the transaction, and I4 holds on that screen |
 | A5 | The core loads and runs the same scenarios in **both** DLC configurations (headless, two matrices) |
-| A6 | No Lua error on load, no desync in a two-player headless session performing conversions and dispatches in the same tick |
+| A6 | No Lua error on load, no desync in a two-player headless session where both players fill and dispatch contracts in the same tick |
 | A7 | A contract generated on an acquired technology is always completable with what the player already produces (checked by the generator, not by hand) |
 | A8 | Each add-on installs, runs and is **removed** without breaking an existing save |
 | A9 | Two hubs on the same surface are refused **below the minimum distance, or off-site if D38 is adopted**, with a message and without losing the item; two hubs on the same surface offer **different** contract sets (different kinds) |
@@ -353,6 +368,11 @@ not weeks.
 
 ## Appendix A — Open questions
 
+**After `0025` a v1 cut applies.** Only six questions still block v1: **Q08, Q18, Q24, Q35, Q36, Q45**.
+Every other open question belongs to a parked feature (recurring contracts, the bank, bounties, the
+mint, debt and resale, technology purchase, hub sites, credit transfers, the multi-mod set) and is
+resolved with its feature, not before.
+
 | ID | Question | Impact if we get it wrong | Owner | State |
 |---|---|---|---|---|
 | ~~Q01 (D1)~~ | ~~Virtual credits or physical item?~~ → **virtual (1a), then item in the MVP (D1-bis)** | — | Philippe | **settled** |
@@ -371,8 +391,8 @@ not weeks.
 | ~~Q20~~ | ~~One treasury or separate faucets?~~ → **one treasury (D16)** | — | Philippe | **settled** |
 | ~~Q26~~ | ~~Cut interest and bounties to wave 2?~~ → **reframed: they become add-ons (D23)** | — | Philippe | **settled 2026-10-25** |
 | ~~Q05~~ | ~~A single hub or several?~~ → **several hubs per surface, on any surface, spaced apart (D25)** | — | Philippe | **settled 2026-10-25** |
-| Q08 | Late penalty or **dry expiry** of a contract? *(now that D35 makes a deadline explicit for the one-off kind and a cadence for the recurring ones)* | A penalty needs a debt or reputation mechanic, otherwise the contract is neutral | Philippe | block 3 |
-| ~~Q15~~ | ~~What funds the interest?~~ → **the company's margin, then its credit line (debt). Only the rate remains, and it belongs to the price table (Q18)** | — | Philippe | **settled in principle 2026-10-25, ADR 0015** |
+| Q08 | Late penalty or **dry expiry** of a contract? | A penalty needs a debt or reputation mechanic, otherwise the contract is neutral | Philippe | block 3 |
+| ~~Q15~~ | ~~What funds the interest?~~ → **parked with the bank (`0025`): no player wallet, no interest** | — | Philippe | **parked 2026-10-25** |
 | Q16 | Rate-improvement technologies: **researched normally** (proposal) or bought at the hub? | Bought: the hub funds its own discount — a self-financing loop | Philippe | block 3 |
 | Q18 | Is the price **band** `cost < payout < price (= cost × 1.5)` the rule for every number? | Ad-hoc numbers: I1 is unmeasurable and the table gets rewritten three times | Philippe | block 3 |
 | Q19-bis | In multiplayer, does a player who does not produce accrue interest while **another** player's factory runs? | Force statistics are shared: without an attribution rule the AFK rule means nothing in multi | Philippe | block 3 |
@@ -400,6 +420,7 @@ not weeks.
 | Q42 | **A guaranteed hub site near the spawn**: nothing in 2.1's data guarantees a patch in the starting area, and a fresh save with no site shows no hub at all | The mod would be invisible during the whole 2-hour horizon (A1) | Philippe | block 3 |
 | Q43 | **Existing saves**: autoplace does not run retroactively — seed a site by script, or declare the mod **new-game only**? | New-game only is honest and cheap; a script seeding sites is a migration to maintain forever | Philippe | block 3 |
 | Q44 | **How many sites per surface**: a fixed number, a map-generation setting, or the autoplace controls? | A fixed number makes hubs scarce; the controls let the player decide how much economy he wants | Philippe | block 3 |
+| Q45 | **Who holds the money**: the company alone (which `0023` + `0024` force, and which makes a player an operator with no purse), or a virtual wallet per player — in which case something must pay into it, and no mechanism for that exists | The bank add-on and the activity rule of `0008` only have a subject if a player holds credits | Philippe | block 3 |
 | Q32 | Moving credits between **two companies**: item conversion only, or a transfer between counters with a fee? | Free transfers: no reason to hold money anywhere; for-pay only: tedious for a legitimate player | Philippe | block 4 |
 | Q09 | Exact publishing procedure on `mods.factorio.com` (upload, moderation, delay) | `[to verify]` — no credible release date without it | cadrage (research) | block 7 |
 

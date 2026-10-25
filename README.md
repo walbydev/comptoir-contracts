@@ -6,8 +6,19 @@ technologies without research.
 
 > Guiding rule: **the hub complements local production, it never replaces it.**
 
-**State: framing in progress (blocks 1–3 consolidated, 40 decisions, 21 questions open).** This
-repository holds the project definition, not code yet. No development before tag `v0.1-cadrage`.
+## v1 (ADR 0025)
+
+**One mod.** One hub = one company carrying its own inventory. **One contract kind**: one-off with a
+deadline, one to three active. **One shop.** Company balances only — **no physical currency, no player
+wallet**. Three tiers. Minimum distance between hubs.
+
+Everything else is **parked as evolution**, written in `adr/` and out of v1: the bank and its interest,
+bounties, the printing right, recurring and decaying contracts, debt and resale, dedicated hub sites,
+buying technologies, credit transfers, and the four-mod set.
+
+State: **blocks 1–3 consolidated, v1 scoped** — 43 decisions (4 withdrawn), 25 ADRs, 6 questions open
+for v1. This repository holds the project definition, not code yet. No development before tag
+`v0.1-cadrage`.
 
 | Document | Purpose |
 |---|---|
@@ -49,13 +60,12 @@ core never knows its add-ons: the dependency arrow points one way only — ADR 0
 | Delivery | **the hub is its own warehouse** — one inventory, no second building, **1–3 active contracts** | ADR 0016 |
 | Contracts | three kinds: **one-off**, **recurring at a fixed price**, **recurring at a decaying price** (logarithmic decay, tier-anchored, floored per item) | ADR 0019, 0020 |
 | Companies | a company has a **character**: what it wants + how it pays, one kind of contract at a time, stated in one line | ADR 0022 |
-| Printing | the research raises the credit line **one step up the dial** | ADR 0017 |
-| Failure | a company in default **loses its contracts and is resold**; the debt lands on the federation | ADR 0018 |
+| Printing | **parked** — the research raises the credit line one step up the dial | ADR 0017 (parked) |
+| Failure | **parked** — a company in default loses its contracts and is resold | ADR 0018 (parked) |
 
-Still open and **not** defaulted: dispatch and goods lost when the hub dies (Q24), resale terms
-(Q34), I2 rewritten for three contracts (Q35), one stock shared by three contracts (Q36), whether the
-dial step can reach `unlimited` (Q37), credits moved between companies (Q32), science bounty unit
-(Q22), multiplayer attribution of activity (Q19-bis), repository layout and names (Q27, Q29).
+Still open, and the only ones that block v1: what an expired contract costs (Q08), the price band
+(Q18), dispatch and what happens to goods when the hub dies (Q24), I2 rewritten for three contracts
+(Q35), one stock shared by three contracts (Q36), and who holds the money (Q45).
 
 ## Test chain
 
