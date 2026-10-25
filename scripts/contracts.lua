@@ -17,6 +17,10 @@
 --              2026-10-25 — b2: `can_accept`, `action_of`, `time_left` and `live` exposed; `accept` and
 --                           `dispatch` now take their verdict from the same gate the window draws with
 --                           (A22), so a button and its action cannot disagree
+--              2026-10-25 — ADR 0051: the cap counts live contracts. `live_count` replaces
+--                           `count_offers`, `refill` fills `offer_slots - live` and never goes
+--                           negative, and `can_accept` refuses with `no_free_slot` when a company
+--                           already holds more than the cap (a stale read, or an edited save)
 -- Usages:      required by control.lua; called by the remote interface, by the settle pass and by
 --              scripts/gui/window.lua (b2)
 -- Notes:       THE POOL IS A GATE, NOT A NUANCE (A18, ADR 0034 §1): an item enters the pool only if
@@ -44,6 +48,13 @@
 --              A company that cannot pay is not silently forgiven: the payment is retried on the next
 --              settle pass, once per contract, with one log line — the `poor` dial of ADR 0015 is
 --              supposed to produce exactly that, and hiding it would make the dial look broken.
+--              THE CAP IS ON LIVE CONTRACTS, NOT ON OFFERS (ADR 0051). `offer_slots` counts
+--              offered + accepted + in_flight, so accepting does not free a slot: an offer becomes a
+--              contract that is still live, and the generator fills `3 - live`, never negative. A
+--              company therefore never holds more than three contracts of any state, and the window
+--              never has to hide one. Because acceptance keeps the count constant, `can_accept`'s
+--              `no_free_slot` guard can only fire on a stale read or on a save whose contracts were
+--              edited — it is a lock, not a normal path.
 -- Licence:     MIT (see LICENSE)
 
 local balance = require("__comptoir-contracts__/config/balance")
@@ -177,11 +188,16 @@ function M.deadline_ticks(seconds, tick)
   return tick + math.ceil(seconds * 60)
 end
 
--- How many contracts the company currently offers (state `offered`).
-function M.count_offers(company)
+-- How many contracts the company is currently living with: offered, accepted and in flight. One
+-- count for the cap (ADR 0051), so a state that can still turn into a payment occupies a slot.
+function M.live_count(company)
+  if company == nil or company.contracts == nil then
+    return 0
+  end
   local count = 0
   for _, id in ipairs(sorted_keys(company.contracts)) do
-    if company.contracts[id].state == M.OFFERED then
+    local state = company.contracts[id].state
+    if state == M.OFFERED or state == M.ACCEPTED or state == M.IN_FLIGHT then
       count = count + 1
     end
   end
@@ -244,12 +260,19 @@ function M.generate(force, company, tick)
   return contract, nil
 end
 
--- Fill the free slots of a company, up to `offer_slots` (F3). Returns how many were generated.
--- A slot that cannot be filled (empty pool) is not an error: a force that cannot craft anything the
--- catalogue knows simply has nothing to offer.
+-- Fill the free slots of a company, up to `offer_slots` live contracts (F3, ADR 0051). Returns how
+-- many were generated.
+-- `wanted` is `offer_slots - live` and is clamped at zero: an accepted or in-flight contract still
+-- occupies its slot, so only a contract that ended (done, expired) opens one. A slot that cannot be
+-- filled (empty pool) is not an error: a force that cannot craft anything the catalogue knows simply
+-- has nothing to offer. `generate` itself draws without looking at the slots — it is the raw pick a
+-- bench asks for by the thousand (A7, A18, A30) — so the cap lives here and nowhere else.
 function M.refill(force, company, tick)
   local generated = 0
-  local wanted = balance.contracts.offer_slots - M.count_offers(company)
+  local wanted = balance.contracts.offer_slots - M.live_count(company)
+  if wanted < 0 then
+    wanted = 0
+  end
   for _ = 1, wanted do
     local contract, reason = M.generate(force, company, tick)
     if contract == nil then
@@ -323,14 +346,21 @@ local function dispatch_readiness(state, storage, force_index, company, contract
   return true, nil, stock, inventory, hub
 end
 
--- May this offer be accepted right now (A22)? The same condition the hold in `accept` needs, said
--- without moving a credit.
-function M.can_accept(state, contract)
+-- May this offer be accepted right now (A22)? The same conditions the hold in `accept` needs, said
+-- without moving a credit: the contract is still an offer, the company has a free slot, and the
+-- cooperative can cover the reserve.
+-- Acceptance turns an offer into an accepted contract, so it keeps `live_count` constant: the
+-- `no_free_slot` guard therefore only fires on a stale read or on a save edited between two reads
+-- (ADR 0051). A company at exactly the cap may still accept one of the three contracts it holds.
+function M.can_accept(state, company, contract)
   if contract == nil then
     return false, "unknown_contract"
   end
   if contract.state ~= M.OFFERED then
     return false, "not_offered"
+  end
+  if M.live_count(company) > balance.contracts.offer_slots then
+    return false, "no_free_slot"
   end
   if ledger.available(state) < contract.reserve then
     return false, "escrow_unavailable"
@@ -346,7 +376,7 @@ function M.action_of(state, storage, force_index, company, contract)
     return nil, false, "unknown_contract", 0
   end
   if contract.state == M.OFFERED then
-    local ok, reason = M.can_accept(state, contract)
+    local ok, reason = M.can_accept(state, company, contract)
     return "accept", ok, reason, 0
   end
   if contract.state == M.ACCEPTED then
@@ -375,7 +405,9 @@ end
 
 -- The contracts a window shows: the live ones only (offered, accepted, in flight), the actionable
 -- first so a row that can be dispatched is never hidden behind an offer. A contract that ended
--- (done, expired) is not a row: its reserve has already left the ledger.
+-- (done, expired) is not a row: its reserve has already left the ledger. Every live contract is
+-- returned — nothing is dropped here. The cap of `offer_slots` is what keeps the list at three rows
+-- (ADR 0051), so the window never needs a display limit of its own.
 function M.live(company)
   local out = {}
   if company == nil or company.contracts == nil then
@@ -407,7 +439,7 @@ function M.accept(state, force, company, contract_id, tick)
     error("[comptoir] contracts.accept: state, force and company are required", 2)
   end
   local contract = company.contracts[contract_id]
-  local allowed, reason = M.can_accept(state, contract)
+  local allowed, reason = M.can_accept(state, company, contract)
   if not allowed then
     return false, reason, contract
   end
@@ -423,7 +455,10 @@ function M.accept(state, force, company, contract_id, tick)
   contract.accepted_tick = tick
   contract.deadline_tick = M.deadline_ticks(contract.deadline_seconds, tick)
 
-  -- The slot refills immediately (ADR 0035: an offer is not a scarce resource, the choice is).
+  -- Accepting does not free a slot (ADR 0051): the contract is still live, so the refill below finds
+  -- `offer_slots - live` at zero and generates nothing. It stays because a company edited below the
+  -- cap is topped up here rather than at the next read; the slot a paid or expired contract opens is
+  -- filled by the settle pass that sees it end (ADR 0035, D59).
   M.refill(force, company, tick)
   ledger.assert_conservation(state, "accept " .. tostring(contract_id))
   return true, nil, contract

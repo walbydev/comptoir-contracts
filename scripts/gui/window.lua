@@ -8,6 +8,10 @@
 -- Author:      Philippe Ryf
 -- Created:     2026-10-25
 -- Revisions:   2026-10-25 — initial: frame, tabs, header, contract rows, shop tab (b1-b3)
+--              2026-10-25 — b4: every live contract is a row. The "three slots plus one empty" display
+--                           cap and the fixed extra placeholder are gone: the module caps the live
+--                           contracts (ADR 0051), so the window draws what it is given and fills the
+--                           rest with placeholders up to `offer_slots`
 -- Usages:      required by control.lua, wired to on_gui_opened / on_gui_closed / on_gui_click /
 --              on_gui_text_changed; the pure part lives in scripts/gui/format.lua
 -- Notes:       THE WINDOW IS NOT TESTABLE HEADLESS (ADR 0050). The measured prerequisite is the
@@ -23,9 +27,11 @@
 --              which counter it belongs to.
 --              THE WIDTH IS SET ONCE, at creation, and never written again: `style.width` pins both
 --              minimal and maximal width, so a row that gains or loses content cannot move a button
---              sideways. The height follows the content, but the content is a constant number of
---              rows per tab (three contract slots plus the empty slot, sixteen shop rows), so nothing
---              inside a tab ever moves either.
+--              sideways. The height follows the content, but the content is a bounded number of rows
+--              per tab (at most `offer_slots` contract rows, sixteen shop rows), so nothing inside a
+--              tab ever moves either: every live contract is a row and the missing ones are drawable
+--              placeholders, up to `offer_slots` (ADR 0051 — the cap is the module's, the window has
+--              no display limit of its own).
 --              THE SHOP QUANTITY IS ONE NUMBER (docs/06 §6). A shared field cannot be clamped per
 --              row, because sixteen rows would need sixteen different ceilings; it is therefore
 --              clamped to the ceiling of the CHEAPEST catalogue item, which is the loosest bound any
@@ -71,9 +77,9 @@ local QUANTITY_LINE = "comptoir_quantity_line"
 local QUANTITY_FIELD = "counter-quantity-field"
 local QUANTITY_LABEL = "comptoir_quantity_label"
 
--- The three slots the mission asks for, plus the empty slot that closes the list (b2).
+-- How many rows the contract tab closes with when a company holds nothing: the cap the module enforces
+-- on live contracts (ADR 0051). The window never slices the list to it — every live contract is drawn.
 local CONTRACT_SLOTS = balance.contracts.offer_slots
-local EMPTY_SLOTS = 1
 
 -- Geometry. Widths only, and only where a column must line up (mission: ugly but correct).
 local WIDTH = 640
@@ -104,6 +110,7 @@ local self_closed_tick = {}
 M.REASONS = {
   "unknown_contract",
   "not_offered",
+  "no_free_slot",
   "escrow_unavailable",
   "not_accepted",
   "in_flight",
@@ -452,17 +459,17 @@ local function render(storage, player, window)
 
   if tab == TAB_CONTRACTS then
     clear(contract_body)
+    -- Every live contract is a row (ADR 0051). The cap of `offer_slots` is enforced by the module, so
+    -- this loop never has to drop one; the placeholders close the tab to a constant height when the
+    -- company holds fewer than the cap. A save that carries more than the cap (edited, or written by
+    -- an older build) is drawn in full — hiding a row would make its contract impossible to dispatch,
+    -- which is exactly what the display cap used to do.
     local live = contracts.live(ctx.company)
-    for slot = 1, CONTRACT_SLOTS do
-      local contract = live[slot]
-      if contract ~= nil then
-        draw_contract_row(contract_body, contract, ctx, storage, tick)
-      else
-        draw_empty_slot(contract_body, slot)
-      end
+    for _, contract in ipairs(live) do
+      draw_contract_row(contract_body, contract, ctx, storage, tick)
     end
-    for extra = 1, EMPTY_SLOTS do
-      draw_empty_slot(contract_body, CONTRACT_SLOTS + extra)
+    for slot = #live + 1, CONTRACT_SLOTS do
+      draw_empty_slot(contract_body, slot)
     end
   else
     clear(shop_body)

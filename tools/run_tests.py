@@ -73,6 +73,7 @@ RUNS = [
     ("a28", "A28", None),
     ("a29", "A29", None),
     ("a30", "A30", None),
+    ("a31", "A31", None),
     ("b1-gui-pure", "B1-gui-pure", None),
 ]
 

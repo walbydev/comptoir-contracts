@@ -14,6 +14,9 @@
 --                           longer deadlines the chain produces (a tier-1 circuit is 11:57, not 6:00)
 --              2026-10-25 — lot b: B1-gui-pure, the counter window's pure functions on crafted cases
 --                           (ADR 0050: the frame itself cannot be built without a client)
+--              2026-10-25 — A31: the cap counts live contracts (ADR 0051). Three live contracts, no
+--                           fourth offer generated, a crafted fourth refused with `no_free_slot`, and
+--                           exactly one new offer once a contract is paid
 -- Usages:      required by control.lua of the test mod, queued by `scenario.lua`
 -- Notes:       THE NUMBERS ARE RECOMPUTED FROM THE DATA, NEVER COPIED FROM THE MOD. The test mod
 --              requires `data/prices.lua` and `config/balance.lua` of the mod under test and derives
@@ -163,6 +166,56 @@ local function first_offer(company)
     end
   end
   return nil
+end
+
+-- The cap of ADR 0051 counts live contracts — offered, accepted and in flight. Counted from the
+-- snapshot so an assertion speaks the number the rule speaks, not a state name.
+local function live_count(company)
+  if company == nil then
+    return 0
+  end
+  local count = 0
+  for _, contract in ipairs(company.contracts) do
+    if contract.state == "offered" or contract.state == "accepted" or contract.state == "in_flight" then
+      count = count + 1
+    end
+  end
+  return count
+end
+
+-- The offers of a company, in snapshot order.
+local function offers_of(company)
+  local out = {}
+  if company == nil then
+    return out
+  end
+  for _, contract in ipairs(company.contracts) do
+    if contract.state == "offered" then
+      out[#out + 1] = contract
+    end
+  end
+  return out
+end
+
+-- Every contract the company ever had, ended ones included: what "a fourth was never generated" is
+-- counted on.
+local function total_contracts(company)
+  if company == nil then
+    return 0
+  end
+  return #company.contracts
+end
+
+-- The id set, for "exactly one new contract" after a refill.
+local function ids_of(company)
+  local out = {}
+  if company == nil then
+    return out
+  end
+  for _, contract in ipairs(company.contracts) do
+    out[contract.id] = true
+  end
+  return out
 end
 
 local function hub_of(state, unit_number)
@@ -1232,6 +1285,144 @@ M.a30 = {
 }
 
 -- ---------------------------------------------------------------------------------------------------
+-- A31 — the cap is on live contracts, so a fourth is neither generated nor accepted
+-- ---------------------------------------------------------------------------------------------------
+-- ADR 0051. `offer_slots` counts offered + accepted + in_flight, so accepting never frees a slot and
+-- the generator never has one to refill. A fourth contract can only reach a company through
+-- `act` "generate", the raw draw the bench uses for a thousand picks (A7, A18, A30) — which is
+-- exactly the stale read the `no_free_slot` guard exists for.
+-- Two counters are used because a crafted fourth would otherwise skew the second half: the contract
+-- that ends has to free one slot on a company that is exactly at the cap.
+
+M.a31 = {
+  id = "A31",
+  name = "with three live contracts, no fourth offer is generated and a crafted fourth is refused",
+  run = function()
+    local force = game.forces["player"]
+    local cap = balance.contracts.offer_slots
+
+    -- First half: three live contracts, a mix of states, and a crafted fourth.
+    local entity, company_id, state = new_hub(force, { x = 0, y = 0 })
+    H.ok(entity.valid, "A31: the counter exists")
+    local company = company_of(state, company_id)
+    H.eq(live_count(company), cap, "A31: a new company holds exactly the cap of live contracts")
+    H.eq(#offers_of(company), cap, "A31: ... all of them offers")
+
+    local offers = offers_of(company)
+    if not H.at_least(#offers, 2, "A31: at least two offers to work with") then
+      return
+    end
+    local first, second = offers[1], offers[2]
+
+    -- Accept one: the offer becomes an accepted contract, so live is unchanged and no slot frees.
+    local pot_before_accept = snap(1)
+    local accepted = act(1, "accept", { company_id = company_id, contract_id = first.id })
+    H.ok(accepted.ok, "A31: accept the first offer (" .. tostring(accepted.reason) .. ")")
+    local after_accept = snap(1)
+    local company_accepted = company_of(after_accept, company_id)
+    H.eq(live_count(company_accepted), cap, "A31: accepting keeps the live count at the cap")
+    H.eq(#offers_of(company_accepted), cap - 1, "A31: ... and the generator did not refill the slot it did not free")
+    H.eq(total_contracts(company_accepted), cap, "A31: no contract was created by the accept")
+    H.eq(after_accept.reserved - pot_before_accept.reserved, first.reserve, "A31: only the escrow moved")
+
+    -- Send it: a contract in the air still occupies its slot. The three live states are now in play.
+    inventory_of(entity).insert({ name = first.item, count = first.quantity })
+    local dispatched = act(1, "dispatch", { company_id = company_id, contract_id = first.id })
+    H.ok(dispatched.ok, "A31: dispatch the first contract (" .. tostring(dispatched.reason) .. ")")
+    local after_dispatch = snap(1)
+    local company_flight = company_of(after_dispatch, company_id)
+    H.eq(live_count(company_flight), cap, "A31: a contract in flight still occupies its slot")
+    H.eq(#offers_of(company_flight), cap - 1, "A31: still no refill while live equals the cap")
+    H.eq(total_contracts(company_flight), cap, "A31: still no fourth contract")
+
+    -- Accept the second offer while the first is in the air: one in flight, two accepted, zero slots.
+    local accepted_second = act(1, "accept", { company_id = company_id, contract_id = second.id })
+    H.ok(accepted_second.ok, "A31: the second offer is accepted while a contract is in flight")
+    local mixed = snap(1)
+    local company_mixed = company_of(mixed, company_id)
+    H.eq(live_count(company_mixed), cap, "A31: one in flight plus two accepted is still three live")
+    H.eq(#offers_of(company_mixed), 1, "A31: exactly one offer is left")
+    H.eq(total_contracts(company_mixed), cap, "A31: ... and the company still holds three contracts in all")
+
+    -- The crafted fourth: the bench's raw draw creates a contract the game itself never would.
+    local crafted = act(1, "generate", { company_id = company_id, count = 1 })
+    if not H.ok(crafted.ok, "A31: the bench crafts a fourth contract (" .. tostring(crafted.reason) .. ")") then
+      return
+    end
+    local over = snap(1)
+    local company_over = company_of(over, company_id)
+    H.eq(live_count(company_over), cap + 1, "A31: the crafted contract puts the company one over the cap")
+    H.eq(#offers_of(company_over), 2, "A31: ... as a second offer")
+    local reserved_before = over.reserved
+
+    local refused = act(1, "accept", { company_id = company_id, contract_id = crafted.contract.id })
+    H.ok(not refused.ok, "A31: accepting the crafted fourth is refused")
+    H.eq(refused.reason, "no_free_slot", "A31: the refusal names the slot, not the escrow")
+    local after_refusal = snap(1)
+    H.eq(
+      contract_of(after_refusal, company_id, crafted.contract.id).state,
+      "offered",
+      "A31: the refused contract is still an offer"
+    )
+    H.eq(after_refusal.reserved, reserved_before, "A31: a refused acceptance holds no escrow")
+    H.eq(live_count(company_of(after_refusal, company_id)), cap + 1, "A31: the refusal moved nothing")
+    H.eq(#offers_of(company_of(after_refusal, company_id)), 2, "A31: the refill does not fill past the cap either")
+
+    -- Second half: a company exactly at the cap loses one contract, and exactly one offer takes the slot.
+    local entity_b, company_b_id = new_hub(force, { x = 400, y = 0 })
+    H.ok(entity_b.valid, "A31: the second counter exists")
+    local state_b = snap(1)
+    local company_b = company_of(state_b, company_b_id)
+    H.eq(live_count(company_b), cap, "A31: the second company starts at the cap")
+    local offer_b = offers_of(company_b)[1]
+    if not H.ok(offer_b ~= nil, "A31: the second company has an offer to send") then
+      return
+    end
+
+    inventory_of(entity_b).insert({ name = offer_b.item, count = offer_b.quantity })
+    local accepted_b = act(1, "accept", { company_id = company_b_id, contract_id = offer_b.id })
+    H.ok(accepted_b.ok, "A31: the second company accepts one (" .. tostring(accepted_b.reason) .. ")")
+    local sent_b = act(1, "dispatch", { company_id = company_b_id, contract_id = offer_b.id })
+    H.ok(sent_b.ok, "A31: the second company sends it (" .. tostring(sent_b.reason) .. ")")
+
+    local before_pay = snap(1)
+    local company_before_pay = company_of(before_pay, company_b_id)
+    H.eq(live_count(company_before_pay), cap, "A31: the second company is at the cap with one contract in flight")
+    H.eq(#offers_of(company_before_pay), cap - 1, "A31: ... and holds two offers while it waits")
+    local ids_before = ids_of(company_before_pay)
+    local total_before = total_contracts(company_before_pay)
+
+    when_paid(1, company_b_id, offer_b.id, 30000, function()
+      local paid = snap(1)
+      local company_paid = company_of(paid, company_b_id)
+      H.eq(contract_of(paid, company_b_id, offer_b.id).state, "done", "A31: the sent contract is paid")
+
+      local created = 0
+      for _, contract in ipairs(company_paid.contracts) do
+        if ids_before[contract.id] ~= true then
+          created = created + 1
+        end
+      end
+      H.eq(created, 1, "A31: the refill generated exactly one contract")
+      H.eq(total_contracts(company_paid), total_before + 1, "A31: ... so the company holds exactly one more than before")
+      H.eq(live_count(company_paid), cap, "A31: the live count is back at the cap, never above it")
+      H.eq(#offers_of(company_paid), cap, "A31: three offers again — the paid contract's slot was taken by one offer")
+      H.note(
+        "A31: cap "
+          .. tostring(cap)
+          .. " counted on live contracts; the fourth contract was crafted through `act` \"generate\" "
+          .. "and refused with `no_free_slot`; the refill after the payment created exactly one contract "
+          .. "("
+          .. tostring(live_count(company_paid))
+          .. " live, "
+          .. tostring(#offers_of(company_paid))
+          .. " offers)"
+      )
+    end, "A31: the sent contract to be paid")
+  end,
+}
+
+-- ---------------------------------------------------------------------------------------------------
 -- a9 (task) — the car survives a save taken mid-flight
 -- ---------------------------------------------------------------------------------------------------
 
@@ -1521,6 +1712,7 @@ M["b1-gui-pure"] = {
 -- The queue, in the order `docs/09-tests.md` lists the criteria.
 M.ORDER = {
   "a1", "a2", "a3", "a7", "a9", "a10", "a13", "a14", "a15", "a18", "a19", "a26", "a28", "a29", "a30",
+  "a31",
   "b1-gui-pure",
   "a9-save", "a9-resume",
 }
