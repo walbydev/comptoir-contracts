@@ -1,8 +1,8 @@
 # Framing — Company contracts (Factorio 2.1 mod)
 
 > Version: 0.2 · Date: 2026-10-25 · Requested by: Philippe Ryf
-> Status: **blocks 1–2 closed 2026-10-25; block 3 open** (decisions D1–D17 recorded, questions
-> Q04–Q05, Q08–Q09, Q15–Q22 awaiting the requester). Block 3 (scope) next.
+> Status: **blocks 1–2 closed; block 3 drafted 2026-10-25** — D1–D22 recorded, §3.2 cut proposed.
+> Blocking questions: Q23–Q26 plus Q08, Q15–Q19-bis, Q22. Block 4 (technical) next.
 > Repository: `walbydev/factorio-contrats` (public GitHub, MIT) — created and verified 2026-10-25.
 > No development before tag `v0.1-cadrage`.
 
@@ -120,6 +120,11 @@ exchange loop** grafted onto what already exists.
 | D15 | Bounties | **Nests, worms and science packs pay escalating bonuses**; escalation anchored on tier, not evolution factor | ADR `0009` |
 | D16 | Money source | **One treasury funds every credit payout** — contracts, bounties, interest (proposal, Q20) | ADR `0009` |
 | D17 | Contract mix | **Most contracts on technologies the player already has**; a minority are "motivation" contracts requiring the next tier, so the player must research or buy forward | block 3 |
+| D18 | AFK signal | **Production**, not movement — no income without production. *Still open*: attribution in a shared multiplayer factory (Q19-bis) | ADR `0008` |
+| D19 | Bank structure | **One bank** holding the accounts of players, companies, the colonial federation and the bank itself: the federation pays contracts and bounties, the bank pays interest | ADR `0011` |
+| D20 | Printing right | **Printing credits is a right obtained by research** — *blocked*: "creation" or "materialisation of an existing balance" (Q25) | ADR `0012` |
+| D21 | Delivery chain | **Hub + space elevator = the interface with the spaceport**; dedicated **cargo warehouses bound 1:1 to a contract**, fed by inserter **or** logistics robot | ADR `0010` |
+| D22 | Dispatch and loss | Manual send or automatic on quantities reached, and what happens to goods on expiry or destruction — *open* (Q24) | ADR `0010` |
 
 ### 1.2 Success indicators (observable) — **accepted by Philippe on 2026-10-25**
 
@@ -201,8 +206,46 @@ contract expires or it does not, but **nothing runs while the game is closed**. 
 
 ## 3. Scope
 
-`[TO FILL — block 3]` MVP / wave 2 / out of scope. D2 (delivery by insertion or by rocket), D4
-(number of hubs) and D5 (Space Age) are settled here with acceptance criteria.
+### 3.1 What is now on the table
+
+A hub/elevator, a spaceport, cargo warehouses bound to contracts, logistics insertion, contracts in
+two flavours, a shop, a curated technology list, a credit-item, two-way conversion with a tiered fee,
+a bank with accounts for four kinds of holders, interest, bounties on nests/worms/science, a printing
+right, and a progression-tier model that must hold from a 2-hour run to a 100-hour run — in two DLC
+configurations.
+
+**That is not one mod, that is three.** The framing's own rule is to remove, not to add, so §3.2 is a
+proposed cut, not a wish list.
+
+### 3.2 Proposed cut — **to validate (Q26)**
+
+| | In v0.1 (MVP) | Wave 2 | Never |
+|---|---|---|---|
+| Structure | hub + elevator + spaceport, **one** hub per surface | companies as account holders | several hubs, multi-force |
+| Delivery | cargo warehouses bound 1:1 to a contract, inserter **and** robot | transit time between elevator and spaceport | belts as a payment channel |
+| Contracts | generator: majority on acquired technologies, minority forward-looking; dry expiry | contract chains, reputation | PvP, leaderboard |
+| Money | virtual credits, credit-item, **two-way conversion** with fixed fee + degressive rate, integer only | printing right (ADR 0012) | floating market |
+| Bank | ledger + accounts + deposit/withdraw | **interest**, AFK-gated (ADR 0007/0008/0011) | negative balances |
+| Bounties | — | nests, worms, science milestones (ADR 0009) | per-unit science payout |
+| Technologies | curated list purchasable at the hub | rate-improvement techs (ADR 0006) | full tree |
+| Configurations | with and without Space Age | — | one config only |
+
+**Rationale for the two big cuts.** Interest and bounties are the only mechanisms that can create or
+drain credit volume, and each one still depends on an unanswered question (Q15, Q23). Shipping them in
+v0.1 would mean shipping an unaudited money printer. The MVP keeps the loop that can actually be
+measured: *deliver → get paid → convert → buy*. Everything else waits until that loop holds I1 and I2.
+
+### 3.3 Acceptance criteria (measurable)
+
+| # | Criterion |
+|---|---|
+| A1 | A fresh save honours its **first contract end to end in under 30 minutes**, without a warehouse (otherwise the 2-hour horizon never starts) |
+| A2 | A warehouse bound to a contract accepts insertion by inserter **and** by logistics robot, and its inventory is inert when unbound (asserted) |
+| A3 | Converting credits to items and back **never increases the total** (automated test, integer only) |
+| A4 | The conversion fee is displayed **before** confirmation, and the fourth-grade player understands it without a wiki (I4) |
+| A5 | The mod loads and runs the same scenarios in **both** DLC configurations (headless, two matrices) |
+| A6 | No Lua error on load, no desync in a two-player headless session performing conversions and deposits in the same tick |
+| A7 | A contract generated on an acquired technology is always completable with what the player already produces (checked by the generator, not by hand) |
 
 ## 4. Technical constraints and reuse
 
@@ -267,6 +310,11 @@ scenarios with Lua assertions.
 | Q20 | **One treasury** for every payout (contracts + bounties + interest), or separate faucets? | Separate faucets: any of them can mint credits, and I1 dies by the richest one | Philippe | block 3 |
 | Q21 | Escalation of bounties anchored on **tier** (proposal) rather than **evolution factor**? | Evolution: the optimal strategy is nest farming, which is exactly what the bounty pays for | Philippe | block 3 |
 | Q22 | Science-pack bounty: **per unit** (unbounded in a 100 h game) or **per milestone** — first *N* packs of each new tier then closed (proposal)? | Per unit: a large factory prints credits and the hub becomes decorative | Philippe | block 3 |
+| Q23 | **What funds the colonial federation's account?** Proposal: its own commercial margin — it buys delivered goods below the price at which it resells materials and technologies | A federation that pays without revenue is a money printer with a nice name | Philippe | block 3 |
+| Q24 | **Dispatch**: manual validation or automatic when the required quantities are reached? And what happens to the goods inside a warehouse when the contract **expires** or the warehouse is **destroyed**? | Silence here = a player silently loses hours of production | Philippe | block 3 |
+| Q25 | **Printing** (ADR 0012): create new credits (reading A, needs a cap and an I1 re-argument) or materialise an existing balance into items (reading B, value conserved)? | A: an arbitrage loop that makes every other mechanic decorative. B: a coherent progression gate | Philippe | block 3 |
+| Q19-bis | In multiplayer, does a player who does not produce still accrue interest while **another** player's factory runs? | Force statistics are shared: without an attribution rule, the AFK rule has no meaning in multiplayer | Philippe | block 3 |
+| Q26 | **Is the §3.2 cut accepted** — interest and bounties moved to wave 2, MVP = deliver → get paid → convert → buy? | Everything in v0.1 at once: no measurable loop, and two money printers shipped unaudited | Philippe | block 3 |
 | Q04 (D2) | Delivery to the hub by **physical insertion** or **rocket launch**? | Rocket: the silo enters the MVP, tracking and testing change | Philippe | block 3 |
 | Q05 (D4) | **A single hub** or several (per surface, per force)? | Several: multi-surface and multi-force from the MVP | Philippe | block 3 |
 | ~~Q06 (D5)~~ | ~~Space Age optional or a hard dependency?~~ → **plays with and without the DLC (D5)** | — | Philippe | **settled 2026-10-25, ADR 0005** |
