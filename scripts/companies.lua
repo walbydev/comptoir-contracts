@@ -13,10 +13,12 @@
 --              create_random_generator` was never measured on 2.1.23, so the mod carries its own
 --              generator: the "minimal standard" linear congruential generator, state = state *
 --              16807 mod (2^31 - 1), seeded once per company and stored in `storage`.
---              Why not design.md §4's `state * 1103515245 + 12345 mod 2^31`: that product reaches
---              2.4e18, past the 2^53 a Lua 5.2 number can hold exactly, so the low bits — the only
---              ones left after a modulo — would be noise. Park-Miller's product peaks at
---              2147483646 * 16807 = 3.6e13 and every step is exact.
+--              Why not design.md §4's `state * 1103515245 + 12345 mod 2^31`: that product passes 2^53
+--              as soon as the state exceeds 8 162 278, so the result stops being exact — measured
+--              2026-10-25 with Lua 5.2.4 (the same double arithmetic the game uses): state 9 000 000
+--              gives 2 074 382 200 where the exact value is 2 074 382 201, and state 2 147 483 646
+--              gives 2 087 949 312 against 2 087 949 151. Park-Miller's product peaks at
+--              2 147 483 646 * 16 807 = 3.6e13, well under 2^53, and every step is exact.
 --              A company's name and character are drawn once, at creation, and then frozen in
 --              `storage`: a reload reproduces them because nothing ever recomputes them.
 --              Every iteration that writes state walks a sorted key list (design.md §4): Lua's table

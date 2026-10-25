@@ -17,8 +17,10 @@
 --              cycle is added on top of it, never absorbed into it. Quantity, machine seconds and
 --              cycle all come from data, so a recipe change moves the deadline with it.
 --              INTEGERS ONLY (D7): the quantity, the payout, the escrow and the deadline in ticks are
---              all integers. The rounding is done with integer arithmetic: `quantity x 0.2` is not
---              exact in a double, `quantity * 20 / 100` is.
+--              all integers. The rounding is done with integer arithmetic — `quantity * 20 / 100`
+--              rather than `quantity * 0.2` — so no step depends on how a double rounds. Measured
+--              2026-10-25: the two agree for every payout up to 200 000, so the integer form is a
+--              robustness choice, not a repair of an observed error.
 --              The quantity is clamped to [30, 500] (ADR 0034 §4): below 30 units a trip is not worth
 --              the escrow, above 500 the goods no longer fit in the counter's one chest.
 -- Licence:     MIT (see LICENSE)

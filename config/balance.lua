@@ -33,9 +33,10 @@ return {
     -- (docs/05-price-table.md §4).
     endowment = 3000,
 
-    -- Escrow rate, taken from the payout on acceptance (D47). Stored as a percentage of integer
-    -- credits rather than as 0.2, because `ceil(payout * 0.2)` is not exact in IEEE 754: 2500 * 0.2
-    -- is 500.00000000000006, which would round up to a 501-credit reserve. `payout * 20 / 100` is.
+    -- Escrow rate, taken from the payout on acceptance (D47). Kept as an integer percentage so the
+    -- whole calculation stays in integers: `floor((payout * 20 + 99) / 100)` never asks how a double
+    -- rounds. Measured 2026-10-25: `ceil(payout * 0.2)` agrees with that for every payout up to
+    -- 200 000, so this is a robustness choice rather than a repair — but it no longer depends on luck.
     escrow_percent = 20,
   },
 
