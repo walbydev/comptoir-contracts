@@ -1,7 +1,7 @@
 # Framing — Company contracts (Factorio 2.1 mod set)
 
 > Version: 0.3 · Date: 2026-10-25 · Requested by: Philippe Ryf
-> Status: **blocks 1–7 CLOSED, block 8 in progress** (2026-10-25) — 70 decisions recorded (4 withdrawn), 40 ADRs, 27
+> Status: **blocks 1–8 CLOSED** (2026-10-25) — 71 decisions recorded (4 withdrawn), 41 ADRs, 28
 > acceptance criteria, **no question left blocking v1**, 15 parked with their features.
 > Repository: `walbydev/comptoir-contracts` (public GitHub, MIT) — created and verified 2026-10-25.
 > No development before tag `v0.1-cadrage`.
@@ -170,6 +170,7 @@ onto what already exists.
 | D66 | Local testing | Development happens in a **separate `--mod-directory`**, in **two copies** (with and without Space Age), never in the player's real mod folder | ADR `0039`, `docs/07-exploitation.md` |
 | D67 | Rights | **Every player may act** (accept, deliver, buy, sell). No permission system, because the engine has **no `custom-permission` type** — measured on 2.1.23 — and because a container can be mined by anyone. Damage is bounded by design: ≤ 3 slots × 20 % escrow, reserve shown before acceptance, counter always buys | ADR `0040`, `docs/08-security-and-rights.md` |
 | D68 | Privacy | **No personal data**: no player name, no id, no playtime in `storage` — contracts are non-nominative and the pot is one account. **No network code**, no telemetry, no anti-cheat (a save is editable; pretending otherwise is theatre) | ADR `0040` |
+| D69 | Per-force economy | Companies, cooperative, contracts and stock are **owned by a force**: each force has its own ledger, its own research-filtered catalogue, and nothing crosses a force boundary | ADR `0041` |
 
 ### 1.2 Success indicators (observable) — **accepted by Philippe on 2026-10-25**
 
@@ -318,6 +319,7 @@ API for third-party mods beyond the add-on interface, final art.
 | A25 | The built archive contains **no key, no token, no absolute path**, and the mod declares no dependency that can reach the network |
 | A26 | A fresh save contains **no player name and no player id** anywhere in `storage` |
 | A27 | Loading a save **with the mod removed** produces the engine's own warning and no crash from `on_load` / `on_configuration_changed` |
+| A28 | On a two-force map, a contract completed by force A leaves force B's cooperative balance and company records **byte-identical** — compared before and after |
 
 ---
 
@@ -508,7 +510,7 @@ resolved with its feature, not before.
 | ~~Q53~~ | ~~Cadence: immediate or timer?~~ → **immediate**, no timer, therefore no clock (D59, ADR `0035`) | — | Philippe | **settled 2026-10-25** |
 | ~~Q54~~ | ~~Deadline display?~~ → **digits and bar** (D62, ADR `0038`) | — | Philippe | **settled 2026-10-25** |
 | ~~Q55~~ | ~~Quantity control?~~ → **a field with presets** `1/10/100/stack`, one shared value (D63, ADR `0038`) | — | Philippe | **settled 2026-10-25** |
-| Q56 | **Per-force economy**: on a map with two forces (PvP, scenario), do companies and the cooperative belong to **each force** (recommended, and the assumed shape of the saved data), or is there **one global economy** shared across forces? | It decides the shape of `storage`; cheap now, expensive after release | Philippe | block 8 |
+| ~~Q56~~ | ~~Per-force economy?~~ → **separate per force** (D69, ADR `0041`): each force has its own ledger, contracts and stock; nothing crosses a force boundary | — | Philippe | **settled 2026-10-25** |
 
 ---
 
