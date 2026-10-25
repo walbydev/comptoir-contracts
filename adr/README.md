@@ -38,6 +38,7 @@ keeps the sentence written on the day — history, not current truth.
 | 0044 | The car is a state, not a sprite that travels | accepted | 4 |
 | 0046 | The counter draws no power: the spaceport feeds it | accepted | 2 |
 | 0047 | The economy was inconsistent: a money target, a quantity floor of 1, a | accepted | 4 |
+| 0048 | The payout target follows the tier, and the deadline follows the whole | accepted | 2 |
 | 0002 | Purchasable technologies: a curated list, never the full tree | parked | 2 |
 | 0007 | A bank exists at the hub: deposits accrue interest | parked | 2 |
 | 0008 | Income is gated on activity: a passive player earns nothing | parked | 2 |
@@ -56,7 +57,7 @@ keeps the sentence written on the day — history, not current truth.
 | 0021 | Hub sites: dedicated zones instead of a minimum distance (proposed) | rejected | 1 |
 | 0045 | A container cannot draw power: the counter's entity type has to move | rejected | 1 |
 
-**30 of 47 ADRs are in force.** Everything else is history: parked with a
+**31 of 48 ADRs are in force.** Everything else is history: parked with a
 future feature, replaced by a later decision, or considered and refused.
 
 ## Reading order for someone arriving now

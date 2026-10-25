@@ -109,26 +109,31 @@ oil steps deep. The catalogue grows by adding items, and the tier follows automa
 
 All three numbers are arbitrated — **scale 10, escrow 20 %, endowment 3 000** (ADR 0036) — and the
 refill is immediate, with no timer (ADR 0035). The quantity of a contract is not chosen: it is derived
-from a **payout target of 2 500 credits** (ADR 0047), floored at **one unit**, so a rare item makes a
-small contract worth the same money as a big one.
+from a **payout target that follows the tier** (ADR 0048), floored at **one unit**, so a rare item makes
+a small contract worth the same money as a big one.
 
 ```
-qty      = clamp(round(2500 / payout_per_unit), 1, 500)
-deadline = max(4 min, qty × machine_seconds / 2 × 1.5) + 2 min cycle
+qty      = clamp(round(target[tier] / payout_per_unit), 1, 500)   -- 2500 / 7500 / 20000
+deadline = max(4 min, qty x chain_seconds / 2 x 1.5) + 2 min cycle
 ```
+
+`chain_seconds` is the machine time of the **whole recipe tree**, measured by `tools/cost_table.py` --
+not the item's own crafting time, which made ten processing units look like a six-minute job.
 
 | Contract | Units | Pays | Reserves | Deadline |
 |---|---|---|---|---|
-| copper cable | 417 | 2 502 | 501 | 6:00 |
+| copper cable | 417 | 2 502 | 501 | 7:06 |
 | iron plate | 208 | 2 496 | 500 | 10:19 |
-| electronic circuit | 86 | 2 494 | 499 | 6:00 |
-| steel plate | 43 | 2 494 | 499 | 10:36 |
-| advanced circuit | 4 | 2 416 | 484 | 6:00 |
-| processing unit | **1** | 1 975 | 395 | 6:00 |
+| steel plate | 43 | 2 494 | 499 | 19:12 |
+| plastic bar | 29 | 7 627 | 1 526 | 6:00 |
+| advanced circuit | 12 | 7 248 | 1 450 | 7:16 |
+| low-density structure | 5 | 8 265 | 1 653 | 11:26 |
+| processing unit | 10 | 19 750 | 3 950 | 35:20 |
 
-Read the steel row: 43 plates are slow to smelt, so the contract gives 10:36; read the processing-unit
-row: one unit, 395 of reserve. Same money, different work — that is the whole design in two lines.
+Read the steel row: 43 plates earn about an eighth of ten processing units and take half the time --
+what anyone who has smelted steel would say.
 
-**Correction of 2026-10-25**: this table replaces an example that said *7 min 33 for 208 iron plates*.
-The formula gives `max(600, 208 × 3.2 / 2) + 120 = 720 s`, so the floor was swallowing the production
-term and every contract had the same deadline (ADR 0047).
+**Correction of 2026-10-25**: this block replaces an example that said *7 min 33 for 208 iron plates*.
+The formula gave `max(600, 208 x 3.2 / 2) + 120 = 720 s`, so the floor was swallowing the production
+term and every contract had the same deadline (ADR 0047). Then the tier-2 and tier-3 rows exposed that
+the time unit itself was wrong (ADR 0048): the deadline now follows the chain.

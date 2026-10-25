@@ -117,6 +117,8 @@ class Cost:
         self.stack: set[str] = set()
         self.memo_fluid: dict[str, bool] = {}
         self.memo_depth: dict[str, int] = {}
+        self.memo_chain: dict[str, float] = {}
+        self._last_chain: float = 0.0
         self.recipe_tech = self._recipe_technologies(data)
 
     @staticmethod
@@ -250,18 +252,46 @@ class Cost:
         return True
 
     def _unit_inputs(self, recipe: dict, depth: int = 0) -> tuple[float, float, float]:
-        """Raw cost, seconds and kJ for ONE unit of the recipe's primary output."""
+        """Raw cost, seconds and kJ for ONE unit of the recipe's primary output.
+
+        `seconds` is the machine time of this recipe only. `chain` is the machine time of the whole
+        tree — one plate is 3.2 s in the furnace, but a processing unit is ten minutes of furnace,
+        assembler and chemical plant spread over its ingredients. A contract's deadline must follow
+        the chain: charging only the last step made ten processing units look like a six-minute job.
+        """
         out_amount = 1.0
         if recipe.get("results"):
-            out_amount = max(r["amount"] for r in recipe["results"]) or 1.0
+            out_amount = float(max(r["amount"] for r in recipe["results"])) or 1.0
         seconds = float(recipe.get("energy_required") or 0.5)
         cost = 0.0
+        chain = 0.0
         for ing in recipe.get("ingredients") or []:
             per_unit = float(ing["amount"]) / out_amount
             cost += per_unit * self.of(ing["name"], depth + 1)
+            chain += per_unit * self.chain_seconds(ing["name"], depth + 1)
         power = CATEGORY_POWER_KW.get((recipe.get("categories") or ["crafting"])[0], 150.0)
         energy_kj = power * seconds / out_amount
+        self._last_chain = chain + seconds / out_amount
         return cost, seconds / out_amount, energy_kj
+
+    def chain_seconds(self, name: str, depth: int = 0) -> float:
+        """Total machine-seconds to produce one unit, through the whole recipe tree."""
+        if name in RAW_WEIGHTS:
+            return 0.0
+        if name in self.memo_chain:
+            return self.memo_chain[name]
+        if depth > 12 or name in self.stack:
+            return 0.0
+        recipe = self._pick(name)
+        if not recipe:
+            self.memo_chain[name] = 0.0
+            return 0.0
+        self.stack.add(name)
+        self._unit_inputs(recipe, depth)
+        value = self._last_chain
+        self.stack.discard(name)
+        self.memo_chain[name] = value
+        return value
 
     def of(self, name: str, depth: int = 0) -> float:
         if name in RAW_WEIGHTS:
@@ -294,6 +324,7 @@ class Cost:
                 "raw": round(raw, 2),
                 "credits": credits,
                 "seconds": round(self.memo_time.get(name, 0.0), 2),
+                "chain": round(self.chain_seconds(name), 2),
                 "energy_kj": round(self.memo_energy.get(name, 0.0), 1),
                 "payout": math.ceil(credits * PAYOUT_FACTOR),
                 "price": math.ceil(credits * PRICE_FACTOR),
@@ -345,13 +376,14 @@ def emit_lua(rows: list[dict]) -> str:
     for row in sorted(rows, key=lambda r: r["item"]):
         name = row["item"]
         lines.append(
-            '    ["%s"] = { tier = %d, raw = %s, credits = %d, seconds = %s, payout = %d, price = %d },'
+            '    ["%s"] = { tier = %d, raw = %s, credits = %d, seconds = %s, chain = %s, payout = %d, price = %d },'
             % (
                 name,
                 row["tier"],
                 _num(row["raw"]),
                 row["credits"],
                 _num(row["seconds"]),
+                _num(row["chain"]),
                 row["payout"],
                 row["price"],
             )
