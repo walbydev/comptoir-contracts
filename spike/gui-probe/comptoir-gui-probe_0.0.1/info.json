@@ -1,0 +1,13 @@
+{
+  "name": "comptoir-gui-probe",
+  "version": "0.0.1",
+  "title": "Comptoir GUI probe",
+  "author": "Philippe Ryf",
+  "contact": "philippe@walby.dev",
+  "description": "Throwaway probe for R1: when a container is opened, can our own frame replace the vanilla inventory frame? Answers one question on a graphical client, then gets deleted.",
+  "factorio_version": "2.1",
+  "dependencies": [
+    "base >= 2.1",
+    "comptoir-contracts"
+  ]
+}
