@@ -1,7 +1,7 @@
 # Framing — Company contracts (Factorio 2.1 mod set)
 
 > Version: 0.3 · Date: 2026-10-25 · Requested by: Philippe Ryf
-> Status: **blocks 1–8 CLOSED** (2026-10-25) — 71 decisions recorded (4 withdrawn), 41 ADRs, 28
+> Status: **blocks 1–9 CLOSED** (2026-10-25) — 73 decisions recorded (4 withdrawn), 42 ADRs, 28
 > acceptance criteria, **no question left blocking v1**, 15 parked with their features.
 > Repository: `walbydev/comptoir-contracts` (public GitHub, MIT) — created and verified 2026-10-25.
 > No development before tag `v0.1-cadrage`.
@@ -171,6 +171,8 @@ onto what already exists.
 | D67 | Rights | **Every player may act** (accept, deliver, buy, sell). No permission system, because the engine has **no `custom-permission` type** — measured on 2.1.23 — and because a container can be mined by anyone. Damage is bounded by design: ≤ 3 slots × 20 % escrow, reserve shown before acceptance, counter always buys | ADR `0040`, `docs/08-security-and-rights.md` |
 | D68 | Privacy | **No personal data**: no player name, no id, no playtime in `storage` — contracts are non-nominative and the pot is one account. **No network code**, no telemetry, no anti-cheat (a save is editable; pretending otherwise is theatre) | ADR `0040` |
 | D69 | Per-force economy | Companies, cooperative, contracts and stock are **owned by a force**: each force has its own ledger, its own research-filtered catalogue, and nothing crosses a force boundary | ADR `0041` |
+| D70 | Test harness | In-game assertions live in a **separate mod `comptoir-test`, never packaged**. Three layers: L1 static (no game launch), L2 headless behaviour, L3 by eye. `make accept` prints the L3 rows as `UNVERIFIED` and exits non-zero until they are recorded | ADR `0042`, `docs/09-tests.md` |
+| D71 | CI | GitHub Actions does **packaging, archive hygiene, price-table reproducibility** — the three things it can really do. Gameplay tests run here, before each release; CI never pretends to run Factorio | ADR `0042` |
 
 ### 1.2 Success indicators (observable) — **accepted by Philippe on 2026-10-25**
 

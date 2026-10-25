@@ -17,7 +17,7 @@ Everything else is **parked as evolution**, written in `adr/` and out of v1: the
 bounties, the printing right, recurring and decaying contracts, debt and resale, dedicated hub sites,
 buying technologies, credit transfers, and the four-mod set.
 
-State: **blocks 1–8 closed** (2026-10-25) — 71 decisions (4 withdrawn), 41 ADRs,
+State: **blocks 1–9 closed** (2026-10-25) — 73 decisions (4 withdrawn), 42 ADRs,
 28 acceptance criteria, **no question left blocking v1**, 15 parked with their features. The
 repository holds the project definition, not code yet. No development before tag `v0.1-cadrage`.
 
@@ -28,6 +28,7 @@ repository holds the project definition, not code yet. No development before tag
 | [`docs/06-interface.md`](docs/06-interface.md) | the window: two tabs, one header, every field specified |
 | [`docs/07-exploitation.md`](docs/07-exploitation.md) | local testing before publishing, packaging, versioning, support |
 | [`docs/08-security-and-rights.md`](docs/08-security-and-rights.md) | trust model, what is stored, what is never stored, licences |
+| [`docs/09-tests.md`](docs/09-tests.md) | the matrix: every criterion, its proof, its owner |
 | [`tools/cost_table.py`](tools/cost_table.py) | the instrument that computes it (`make prices`) |
 | [`adr/`](adr/) | architecture decisions, numbered, never rewritten |
 | [`docs/entrants/`](docs/entrants/) | frozen handoff brief (input material, original language) |
