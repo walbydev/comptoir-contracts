@@ -1,8 +1,8 @@
 # Framing — Company contracts (Factorio 2.1 mod)
 
 > Version: 0.2 · Date: 2026-10-25 · Requested by: Philippe Ryf
-> Status: **block 1 closed 2026-10-25** — Phase 0 done; decisions D1, D1-bis, D3, D5, D6 and the
-> success indicators I1–I5 are settled by the requester.
+> Status: **blocks 1–2 closed 2026-10-25** — Phase 0 done; decisions D1, D1-bis, D3, D5, D6, D7–D13
+> and the success indicators I1–I5 are settled by the requester. Block 3 (scope) next.
 > Repository: `walbydev/factorio-contrats` (public GitHub, MIT) — created and verified 2026-10-25.
 > No development before tag `v0.1-cadrage`.
 
@@ -109,6 +109,13 @@ exchange loop** grafted onto what already exists.
 | D5 | Space Age | **Works with and without the DLC**: prototypes owned by the mod, SA assets reused only when the DLC is present | ADR `0005` |
 | D6 | Repository forge | **Public GitHub `walbydev`** (3a) | ADR `0003` |
 | — | Licence | **MIT** (requester's choice, option 3a) | ADR `0003` |
+| D7 | Money format | **Integer credits only** — no cents, no fractional credit anywhere, explicit rounding | ADR `0006` |
+| D8 | Credit-item value | **Fixed face value**, forever, set in the price table | ADR `0006` |
+| D9 | Conversion cost | **Fixed fee + amount-dependent (degressive) rate** | ADR `0006` |
+| D10 | Rate improvements | **Two technologies** improve rate and fixed fee — *proposal to validate*: researched normally rather than bought with credits (Q16) | ADR `0006` |
+| D11 | Bank | **Deposit, withdraw, regular interest**; interest funded by the hub's own margin — the exact funding rule is an **open prerequisite (Q15)** | ADR `0007` |
+| D12 | Players | **Solo and multiplayer**; gifting exists **only via credit-items**, never a direct credit transfer | §2 |
+| D13 | Game horizon | **2 h speedrun to 100 h long game** — the economy scales by **progression tier**, not by wall-clock time | §2 |
 
 ### 1.2 Success indicators (observable) — **accepted by Philippe on 2026-10-25**
 
@@ -142,8 +149,51 @@ confirmed by Philippe on 2026-10-25** along with the whole set.
 
 ## 2. Users and usage
 
-`[TO FILL — block 2]` Frame set in §0.5: one real user (Philippe, the player) plus the anonymous
-portal population. Usage is described in play sessions, not requests per day.
+### 2.1 Who actually uses it
+
+| Population | Reality | Consequence |
+|---|---|---|
+| **Philippe, solo** | the primary user: the mod is built for his games first | every acceptance criterion is measured on his saves (I1–I5) |
+| **Other players, multiplayer** | each player has their **own** ledger and bank; credits are per player, not shared | a conversion and a deposit must be deterministic and re-entrant (same tick, two players) |
+| **Anonymous portal users** | install the mod from `mods.factorio.com`, never contact us | I4 (understandable without documentation) is a hard requirement, not a nicety |
+| **A player without the mod** | **cannot receive credits**: the credit-item has no meaning in a save where the mod is absent | gifting is only meaningful between equipped players — stated in the mod description |
+
+### 2.2 The usage gestures (what the mod must make possible)
+
+Open the hub · read a contract and its requirements · deliver · be paid in credits and/or a
+technology · buy materials or a curated technology · **convert credits into credit-items** ·
+**convert credit-items into credits** · **deposit into the bank** · **withdraw** · **hand items to
+another player** (chest, ground, direct insertion). Nothing else.
+
+Every one of these gestures must be reachable from the hub GUI (or the item itself for the item
+form) without reading a wiki.
+
+### 2.3 Time horizon: 2 hours to 100 hours
+
+The requester plays anything from a **2-hour run** to a **100-hour long game**. A single static
+catalogue cannot serve both: at 2 hours the player has barely launched a rocket, at 100 hours
+everything is unlocked.
+
+**Design consequence, settled here:** the economy scales by **progression tier**, never by
+wall-clock time. Contracts and purchasable goods are gated on what the player has already
+accomplished (technologies researched, science packs produced), so the same table serves a short and
+a long game. A timer-based economy would make the 2-hour run see one contract and the 100-hour run
+see everything too early.
+
+### 2.4 What usage is *not*
+
+No API, no external consumer, no other mod is required to consume anything. Nothing is scheduled: a
+contract expires or it does not, but **nothing runs while the game is closed**. There is no
+"it worked overnight" metric — the only clock is game time.
+
+### 2.5 What this implies for the following blocks
+
+- Block 3 (scope): the tier model is part of the MVP, otherwise I1/I2 cannot hold across 2 h and 100 h.
+- Block 5 (data): per-player ledger and bank in `storage`, plus the hub's margin account.
+- Block 6 (UI): the fee must be visible **before** confirming a conversion, and the tier of a
+  contract must be readable at a glance.
+- Block 9 (quality): multiplayer determinism tests, and two run lengths (short and long) as test
+  scenarios.
 
 ## 3. Scope
 
@@ -202,12 +252,16 @@ scenarios with Lua assertions.
 | ~~Q07~~ | ~~MIT or LGPL-3 licence?~~ → **MIT** | — | Philippe | **settled 2026-10-25** |
 | ~~Q10~~ | ~~Are the 5 indicators accepted? Is the I1 ratio ≥ 1.5 right?~~ → **all accepted 2026-10-25** | — | Philippe | **settled** |
 | ~~Q11~~ | ~~1b: extension point or planned wave 2?~~ → **the item is in the MVP, both conversion directions (D1-bis)** | — | Philippe | **settled, see ADR 0004** |
-| Q12 | Is a **conversion spread** applied at the hub? | Free symmetric conversion makes the item pointless as a store of value and opens a laundering loop | Philippe | block 3 |
-| Q13 | Fixed rate (1 item = N credits) or a floating market rate? | Floating: needs a price feed and multiplies the balancing surface | Philippe | block 3 |
-| Q14 | **Multiplayer**: must the mod be correct with several players in the MVP? Gifting implies yes — how many, LAN or internet? | Yes: determinism, desync and same-tick conversion tests enter block 9. No: the gifting requirement is moot | Philippe | block 2 |
+| ~~Q12~~ | ~~Is a conversion spread applied?~~ → **yes: fixed fee + amount-dependent rate (D9)** | — | Philippe | **settled 2026-10-25** |
+| ~~Q13~~ | ~~Fixed rate or floating market rate?~~ → **fixed numeric table; the *cost* varies with the amount, the rate is not a market** | — | Philippe | **settled 2026-10-25** |
+| ~~Q14~~ | ~~Multiplayer in the MVP?~~ → **solo and multiplayer, gifting only via items** | — | Philippe | **settled 2026-10-25** |
+| Q15 | **What funds the interest?** Cadence in game time? What does the bank show when the margin is empty? | Without a bound, interest creates credits out of nothing and I1 (hub must not replace production) cannot hold | Philippe | block 3 |
+| Q16 | Rate-improvement technologies: **researched normally** (proposal) or **bought at the hub**? | Bought: the hub funds its own discount — a self-financing loop | Philippe | block 3 |
+| Q17 | Does the catalogue scale by **progression tier** (proposal) or by time/random draw? | Time-based: a 2 h run sees one contract, a 100 h run rushes everything, and neither keeps I1/I2 | Philippe | block 3 |
+| Q18 | Where do the numbers come from: price table anchored on **production cost (raw + energy + time) × ≥ 1.5**, in integers? | Ad-hoc numbers: I1 is unmeasurable and the table gets rewritten three times | Philippe | block 3 |
 | Q04 (D2) | Delivery to the hub by **physical insertion** or **rocket launch**? | Rocket: the silo enters the MVP, tracking and testing change | Philippe | block 3 |
 | Q05 (D4) | **A single hub** or several (per surface, per force)? | Several: multi-surface and multi-force from the MVP | Philippe | block 3 |
-| Q06 (D5) | Space Age **optional** or a hard dependency? | Hard: smaller audience, planets frozen into scope | Philippe | block 3 |
+| ~~Q06 (D5)~~ | ~~Space Age optional or a hard dependency?~~ → **plays with and without the DLC (D5)** | — | Philippe | **settled 2026-10-25, ADR 0005** |
 | Q08 | Late penalty or **dry expiry** of a contract? | Penalty: needs a debt or reputation mechanic, otherwise the contract is neutral | Philippe | block 3 |
 | Q09 | Exact publishing procedure on `mods.factorio.com` (upload, moderation, delay) | `[to verify]` — no credible "release date" without it | cadrage (research) | block 7 |
 

@@ -24,6 +24,9 @@ No development before tag `v0.1-cadrage`.
 | Purchasable technologies | curated list, never the full tree | ADR 0002 |
 | Space Age | plays identically **with and without** the DLC: own prototypes, DLC assets reused when present | ADR 0005 |
 | Forge and licence | public GitHub `walbydev`, MIT | ADR 0003 |
+| Money | integer credits only, fixed face value per item, conversion = fixed fee + degressive rate | ADR 0006 |
+| Bank | deposit/withdraw with regular interest, funded by the hub's margin (funding rule still open — Q15) | ADR 0007 |
+| Players | solo and multiplayer; gifting only via items, never a direct credit transfer | framing §2 |
 
 ## Test chain
 
