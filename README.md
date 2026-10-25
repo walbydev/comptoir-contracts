@@ -20,8 +20,9 @@ No development before tag `v0.1-cadrage`.
 
 | Topic | Decision | Trace |
 |---|---|---|
-| Nature of credits | virtual currency in the save, extension point towards a physical item | ADR 0001 |
+| Credits | virtual ledger **plus** a bearer credit-item (giftable, storable), converted both ways **at the hub only** | ADR 0004 (supersedes 0001) |
 | Purchasable technologies | curated list, never the full tree | ADR 0002 |
+| Space Age | plays identically **with and without** the DLC: own prototypes, DLC assets reused when present | ADR 0005 |
 | Forge and licence | public GitHub `walbydev`, MIT | ADR 0003 |
 
 ## Test chain

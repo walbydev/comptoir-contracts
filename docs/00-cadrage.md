@@ -1,7 +1,8 @@
 # Framing — Company contracts (Factorio 2.1 mod)
 
 > Version: 0.2 · Date: 2026-10-25 · Requested by: Philippe Ryf
-> Status: **block 1 awaiting validation** — Phase 0 done, decisions D1/D3/D6 settled.
+> Status: **block 1 closed 2026-10-25** — Phase 0 done; decisions D1, D1-bis, D3, D5, D6 and the
+> success indicators I1–I5 are settled by the requester.
 > Repository: `walbydev/factorio-contrats` (public GitHub, MIT) — created and verified 2026-10-25.
 > No development before tag `v0.1-cadrage`.
 
@@ -102,35 +103,40 @@ exchange loop** grafted onto what already exists.
 
 | ID | Question | Philippe's decision (2026-10-25) | Trace |
 |---|---|---|---|
-| D1 | Nature of credits | **Virtual currency** (1a), with a **future complementary credit-item** (1b) | ADR `0001` |
+| D1 | Nature of credits, first answer | **Virtual currency** (1a) — *superseded the same day* | ADR `0001` (superseded) |
+| D1-bis | Credit-item, final answer | **The item exists in the MVP**, convertible **both ways at the hub only**; bearer asset: giftable to another player, storable in a chest | ADR `0004` |
 | D3 | Purchasable technologies | **Curated list** (2a): never the technology that unlocks the hub, never a tech on the critical path | ADR `0002` |
+| D5 | Space Age | **Works with and without the DLC**: prototypes owned by the mod, SA assets reused only when the DLC is present | ADR `0005` |
 | D6 | Repository forge | **Public GitHub `walbydev`** (3a) | ADR `0003` |
 | — | Licence | **MIT** (requester's choice, option 3a) | ADR `0003` |
 
-### 1.2 Success indicators (observable) — **awaiting Philippe's validation**
+### 1.2 Success indicators (observable) — **accepted by Philippe on 2026-10-25**
 
 | # | Indicator | Measurement | Status |
 |---|---|---|---|
-| I1 | The hub does not replace production | On a reference save, buying a material from the hub costs **strictly more** than producing it locally (ratio ≥ 1.5), measured on 10 reference items | proposed |
-| I2 | Contracts remain a choice | At any time the player can honour at least **2 contracts out of 4** from current stock, and **at most 3 out of 4** without producing — so production is required to keep the pace | proposed |
-| I3 | The hub is used, not ignored | Philippe opens it at least **once per play session** across 5 consecutive test sessions | proposed |
-| I4 | The hub is understandable without documentation | First contract delivered **without reading external docs**, using only tooltips and the GUI | proposed |
-| I5 | No technical regression | No Lua error on load, 0 errors across headless scenarios, a save from version N reloadable in N+1 | proposed |
+| I1 | The hub does not replace production | On a reference save, buying a material from the hub costs **strictly more** than producing it locally (ratio ≥ 1.5), measured on 10 reference items | accepted |
+| I2 | Contracts remain a choice | At any time the player can honour at least **2 contracts out of 4** from current stock, and **at most 3 out of 4** without producing — so production is required to keep the pace | accepted |
+| I3 | The hub is used, not ignored | Philippe opens it at least **once per play session** across 5 consecutive test sessions | accepted |
+| I4 | The hub is understandable without documentation | First contract delivered **without reading external docs**, using only tooltips and the GUI | accepted |
+| I5 | No technical regression | No Lua error on load, 0 errors across headless scenarios, a save from version N reloadable in N+1 | accepted |
 
 I1 and I2 carry the "balanced" requirement on their own: they will decide success, and they must be
-turned into concrete numbers in block 3 and tested in block 9.
+turned into concrete numbers in block 3 and tested in block 9. **The I1 threshold (ratio ≥ 1.5) was
+confirmed by Philippe on 2026-10-25** along with the whole set.
 
 ### 1.3 Non-goals (what this project will never do)
 
 - No new planet, no new surface, no rework of base recipes.
 - No competitive multiplayer economy: no PvP, no player market, no leaderboard.
-- No **hard** Space Age dependency in the MVP (D5) — at most tested compatibility.
+- No configuration where the mod requires the DLC: it plays identically with and without Space Age
+  (ADR 0005), and **both configurations are tested**. "Works in my setup" is not a claim.
 - No final artwork in v0.1: placeholders accepted, art pass later.
 - No replacement of research: no technology on the critical path can be bought at the hub.
   **Direct consequence of 2a**: the curated list is the guardrail, not an intention.
 - No second hub per surface, no multi-force, in the MVP (D4, to confirm in block 3).
-- **No credit-item in the MVP** (consequence of 1a). The extension point stays open: a complementary
-  item may exist later, but it must not force a migration of contract history or a GUI rewrite.
+- ~~No credit-item in the MVP~~ — **reversed 2026-10-25** (ADR 0004): the item is in the MVP, as a
+  bearer asset convertible both ways at the hub. What stays forbidden is **minting credits outside
+  the hub** — no recipe, no chest trick, no script, no third path.
 
 ---
 
@@ -151,7 +157,9 @@ portal population. Usage is described in play sessions, not requests per day.
 - Language: **Lua 5.2** (Factorio API), no .NET, no PostgreSQL — the preferred stack does not apply.
 - Persistent state: `storage` (not `global`, since 2.0 — a trap confirmed by the game).
 - In 2.1, `recipe.categories` replaces `recipe.category` (a trap confirmed by the game).
-- Reuse: **existing assets only** (`rocket-silo`, `cargo-landing-pad`, `cargo-pod`). No existing
+- Reuse: **base assets by default** — `rocket-silo` exists in base 2.1 and can serve as a visual
+  anchor. `cargo-landing-pad` and `cargo-pod` are **Space Age prototypes**: usable only in the DLC
+  configuration (ADR 0005). The hub's own prototypes carry the behaviour in both cases. No existing
   prototype may be overwritten.
 
 ## 5. Data
@@ -192,8 +200,11 @@ scenarios with Lua assertions.
 | ~~Q02 (D3)~~ | ~~Curated list or full tree?~~ → **curated list (2a)** | — | Philippe | **settled 2026-10-25** |
 | ~~Q03 (D6)~~ | ~~Public GitHub or private Gitea?~~ → **public GitHub `walbydev` (3a)** | — | Philippe | **settled 2026-10-25** |
 | ~~Q07~~ | ~~MIT or LGPL-3 licence?~~ → **MIT** | — | Philippe | **settled 2026-10-25** |
-| Q10 | Are the **5 success indicators** (I1→I5) accepted as written? Is the **ratio ≥ 1.5** of I1 the right threshold? | Without validation, block 1 stays open and block 9 has no threshold to test against | Philippe | **block 1** |
-| Q11 | The **1b extension (credit-item)**: an extension point left open, or a planned wave 2 with a deadline? | Planned: reserve scope and tests now; open: we forbid ourselves to touch it in the MVP | Philippe | block 1/3 |
+| ~~Q10~~ | ~~Are the 5 indicators accepted? Is the I1 ratio ≥ 1.5 right?~~ → **all accepted 2026-10-25** | — | Philippe | **settled** |
+| ~~Q11~~ | ~~1b: extension point or planned wave 2?~~ → **the item is in the MVP, both conversion directions (D1-bis)** | — | Philippe | **settled, see ADR 0004** |
+| Q12 | Is a **conversion spread** applied at the hub? | Free symmetric conversion makes the item pointless as a store of value and opens a laundering loop | Philippe | block 3 |
+| Q13 | Fixed rate (1 item = N credits) or a floating market rate? | Floating: needs a price feed and multiplies the balancing surface | Philippe | block 3 |
+| Q14 | **Multiplayer**: must the mod be correct with several players in the MVP? Gifting implies yes — how many, LAN or internet? | Yes: determinism, desync and same-tick conversion tests enter block 9. No: the gifting requirement is moot | Philippe | block 2 |
 | Q04 (D2) | Delivery to the hub by **physical insertion** or **rocket launch**? | Rocket: the silo enters the MVP, tracking and testing change | Philippe | block 3 |
 | Q05 (D4) | **A single hub** or several (per surface, per force)? | Several: multi-surface and multi-force from the MVP | Philippe | block 3 |
 | Q06 (D5) | Space Age **optional** or a hard dependency? | Hard: smaller audience, planets frozen into scope | Philippe | block 3 |

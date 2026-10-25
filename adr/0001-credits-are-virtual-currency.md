@@ -1,6 +1,6 @@
 # 0001 — Credits are a virtual currency, with an extension point towards an item
 
-- **Status**: accepted
+- **Status**: superseded by `0004` (2026-10-25) — the credit item moved into the MVP
 - **Date**: 2026-10-25
 - **Block**: 1
 - **Supersedes**: —
