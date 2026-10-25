@@ -120,6 +120,23 @@ Filled by the requester, one block per release. Empty means the release has not 
 |---|---|---|---|---|---|
 | _(none yet)_ | | | | | |
 
+### The four questions, worded for the person at the screen
+
+Ask them in this order, and write the answer as a sentence, not a tick. A tick hides the difference
+between "no truncation" and "I did not look".
+
+1. **A20** — *Set the interface scale to 100 %, open the window, then set it to 150 % and reopen.
+   Is any text cut off with an ellipsis, or does any control fall outside the frame?*
+2. **A22** — *With a cooperative that cannot cover the reservation, is the `ACCEPT` button greyed out
+   rather than failing after the click? Repeat with an empty counter for the `DISPATCH` button.*
+3. **A23** — *Type `37` in the quantity field, then press `10`. Does the field show `10`, and does the
+   action act on 10 — not on 37?*
+4. **A24** — *Ask for more than the balance allows. Does the field show the clamped number **before**
+   the click, or does the click surprise you?*
+
+And one question that is not a criterion but decides the next lot: **does it look like what was
+described?** A window that passes all four and still reads as cheap is a window to redo.
+
 ## 6. What is deliberately not tested, and why
 
 - **Desync under real network conditions** — needs two real clients. A headless server plus one local
