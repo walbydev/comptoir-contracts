@@ -48,7 +48,7 @@ prevent.
 | ID | Criterion (short) | Proof | Layer | Owner |
 |---|---|---|---|---|
 | A1 | first contract end to end under 30 min | scripted run: place counter, accept, fill, dispatch, assert payout and elapsed ticks | L2 | cadrage |
-| A2 | insertion by inserter **and** robot; dispatch only on request | test mod inserts with both, then asserts the contract is not auto-completed | L2 | cadrage |
+| A2 | insertion **by inserter**; robot feeding parked (`0049`, measured) | test mod inserts with an inserter; a robot path is not attempted and the reason is in the row | L2 | cadrage |
 | A3 | conservation of the money | sum before/after each of 9 operations, assert equality | L2 | cadrage |
 | A5 | loads and runs in both DLC configurations | `make test` runs twice, different `--mod-directory` | L2 | cadrage |
 | A6 | no Lua error; no desync in two-player headless | errors: L2. **Desync: not automatable here** — a real two-client session is a manual check before a release | L2 + manual | cadrage |

@@ -1,0 +1,12 @@
+-- data.lua — the bench adds no prototype: it only drives the mod under test.
+--
+-- Description: empty on purpose. The file exists so the data stage has something to load and so a
+--              future fixture (a test-only item) has an obvious home. Nothing here may change
+--              gameplay: a bench that ships prototypes tests something else than the mod.
+-- Author:      Philippe Ryf
+-- Created:     2026-10-25
+-- Revisions:   2026-10-25 — initial
+-- Usages:      data stage of the test mod
+-- Notes:       `energy_source` is forbidden in the mod under test; it is forbidden here too, so the
+--              bench cannot power anything the mod would not.
+-- Licence:     MIT (see LICENSE)

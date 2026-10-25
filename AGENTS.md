@@ -19,10 +19,10 @@ make package   # build comptoir-contracts_<version>.zip — name format is manda
 ```
 
 Verified environment facts (2026-10-25): Factorio headless 2.1.23 runs from
-`/opt/data/.local/opt/factorio/bin/x64/factorio`. **`luac` is not installed** on this machine — a
-depth-6 search of `/` found no binary, despite the handoff brief claiming 5.2.4 was compiled
-locally. So `make check` works only after Lua 5.2 is built, and until then a syntax error surfaces
-as a headless load failure. Do not claim a syntax check passed without quoting the command.
+`/opt/data/.local/opt/factorio/bin/x64/factorio`. **`luac` 5.2.4 IS available**, symlinked at
+`/opt/data/.local/bin/luac` to `/opt/data/.local/opt/lua-5.2.4/lua-5.2.4/src/luac` — moved out of the
+profile cache on 2026-10-25 so a cache prune cannot break `make check`. A syntax error also surfaces as
+a headless load failure; quote the command output, never the claim.
 
 ## Rules that are not negotiable
 

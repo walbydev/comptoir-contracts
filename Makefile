@@ -7,11 +7,12 @@
 FACTORIO ?= factorio
 LUAC    ?= luac
 
-.PHONY: help check test package prices prices-md dump audit index
+.PHONY: help check test test-one package prices prices-md dump audit index
 
 help:
 	@echo "check     - Lua syntax check over every .lua file (needs luac, not installed here)"
-	@echo "test      - headless Factorio scenario run (not implemented yet)"
+	@echo "test      - the bench: one scenario per criterion, both configurations (TEST_ARGS=...)"
+	@echo "test-one  - one scenario, for a red/green demonstration (SCENARIO=a13)"
 	@echo "package   - build the mod zip for the portal (not implemented yet)"
 	@echo "dump      - regenerate the prototype data dump from the installed game"
 	@echo "prices    - regenerate data/prices.lua from that dump (the mod's data file)"
@@ -50,9 +51,19 @@ check:
 	for f in $$files; do $(LUAC) -p "$$f" || exit 1; done; \
 	echo "lua syntax OK: $$(echo $$files | wc -w) file(s)"
 
+# The bench owns its own verdict: tools/run_tests.py starts Factorio once per scenario, in a
+# throwaway install of its own, and exits non-zero when any run is red, when the log carries a Lua
+# error, or when a result file never appeared. Override the binary with FACTORIO=..., and narrow with
+# TEST_ARGS="--config vanilla --scenario a13".
+TEST_ARGS ?= --config both
+
 test:
-	@echo "no test harness yet — arrives with the first control.lua"
-	@exit 1
+	python3 tools/run_tests.py --factorio "$(FACTORIO)" $(TEST_ARGS)
+
+# One scenario, both configurations, for the "break it and watch it go red" demonstration.
+SCENARIO ?= a13
+test-one:
+	python3 tools/run_tests.py --factorio "$(FACTORIO)" --scenario $(SCENARIO)
 
 package:
 	@echo "no packaging yet — arrives with the first release"

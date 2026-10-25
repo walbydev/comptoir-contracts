@@ -2,11 +2,14 @@
 --
 -- Description: creates one company per counter, once, and owns everything that makes it an entity:
 --              its name, its character (type plus weights), its commercial tier read from the price
---              table, and its own random stream. It never touches a balance — `scripts/ledger.lua`
---              owns the money (design.md §1).
+--              table **and from the player's research**, and its own random stream. It never touches
+--              a balance — `scripts/ledger.lua` owns the money (design.md §1).
 -- Author:      Philippe Ryf
 -- Created:     2026-10-25
 -- Revisions:   2026-10-25 — initial: creation on build, name, character, tier, Park-Miller LCG
+--              2026-10-25 — ADR 0048: the company no longer stores a tier; it is derived from the
+--                           force's research on every read (cap 3, floor 1). Old saves keep their
+--                           stored `tier` field and it is ignored — no storage version bump.
 -- Usages:      required by control.lua; called by scripts/contracts.lua (pool, draw) and by the
 --              snapshot of the remote interface
 -- Notes:       RANDOMNESS. `math.random` desynchronises a multiplayer game and `game.
@@ -23,12 +26,19 @@
 --              `storage`: a reload reproduces them because nothing ever recomputes them.
 --              Every iteration that writes state walks a sorted key list (design.md §4): Lua's table
 --              order is not guaranteed, and that is how a mod desynchronises without `math.random`.
+--              TIER IS A DERIVATION, NOT A FIELD (ADR 0048 §1). It is the highest tier of an item
+--              whose recipe is enabled for the force, capped at M.MAX_TIER and never below 1 — D57
+--              ("the real gate is the player's research") applied to the generator. Nothing is
+--              written: a company born in 0.1.0 carries a stored `tier` and it is ignored, which is
+--              why the storage version does not move. The accepted consequence is that the day the
+--              player researches oil, every company raises its target at once.
 -- Licence:     MIT (see LICENSE)
 
 local balance = require("__comptoir-contracts__/config/balance")
 local catalogue = require("__comptoir-contracts__/config/companies")
 local prices = require("__comptoir-contracts__/data/prices")
 local ledger = require("__comptoir-contracts__/scripts/ledger")
+local elevator = require("__comptoir-contracts__/scripts/elevator")
 
 local M = {}
 
@@ -40,6 +50,11 @@ M.LCG_MODULUS = 2147483647
 M.LCG_MULTIPLIER = 16807
 
 M.NAME_ATTEMPTS = catalogue.name_attempts
+
+-- The deepest tier the generator will ever reach (ADR 0048 §1). The catalogue's own tiers stop at 3
+-- today; the cap is stated here so a future tier-4 item cannot silently raise what a contract asks
+-- for before the balancing table has a target for it — `contracts.target_for_tier` would raise.
+M.MAX_TIER = 3
 
 local function is_integer(value)
   return type(value) == "number" and value == value and value % 1 == 0
@@ -178,18 +193,40 @@ function M.is_unlocked(force, item)
   return recipe.enabled == true
 end
 
--- The commercial tier of a force: the deepest tier it can actually build. Tiers come from the price
--- table (oil-chain depth, measured), never from the technology tree (ADR 0034 §2).
+-- The commercial tier of a force, **derived on every read and stored nowhere** (ADR 0048 §1): the
+-- highest tier of an item whose recipe is enabled for the force, capped at MAX_TIER and never below 1.
+-- Tiers come from the price table (oil-chain depth, measured), never from the technology tree
+-- (ADR 0034 §2); what makes them reachable is the player's research, and that is a fact about the
+-- force, not about the company. A company that outlives a lost research loses its top tier with it,
+-- which is the honest reading of "the real gate is the player's research" (D57).
 function M.unlocked_tier(force)
   local tier = 1
   local names = sorted_keys(prices.items)
   for _, item in ipairs(names) do
     local entry = prices.items[item]
-    if entry.tier > tier and M.is_unlocked(force, item) then
+    if entry.tier > tier and entry.tier <= M.MAX_TIER and M.is_unlocked(force, item) then
       tier = entry.tier
     end
   end
   return tier
+end
+
+-- The solvency profile of a world, read from the startup setting exactly once (ADR 0015 §4): the
+-- value is copied into the force's record when the economy is born, and never read again. A player
+-- who reloads an old save with a different setting keeps the world it was created with.
+local function solvency_profile()
+  local setting = settings.startup["comptoir-solvency"]
+  if setting == nil then
+    error("[comptoir] companies: the startup setting `comptoir-solvency` is missing — settings.lua not loaded?", 3)
+  end
+  local profile = setting.value
+  if balance.solvency.profiles[profile] == nil then
+    error(
+      "[comptoir] companies: `comptoir-solvency` is " .. tostring(profile) .. ", which config/balance.lua does not know",
+      3
+    )
+  end
+  return profile, balance.solvency.profiles[profile]
 end
 
 -- The economy record of a force, created on first use with the endowment (D28).
@@ -199,11 +236,15 @@ function M.force_state(storage, force_index)
   end
   local state = storage.forces[force_index]
   if state == nil then
+    local profile, credit_line = solvency_profile()
     state = ledger.new_force(balance.economy.endowment)
+    state.solvency = profile
+    state.credit_line = credit_line
     storage.forces[force_index] = state
     log(
       "[comptoir] economy created for force " .. force_index .. ": endowment " .. balance.economy.endowment
         .. " credits issued to the cooperative, federation at " .. state.federation
+        .. ", solvency \"" .. profile .. "\" (credit line " .. credit_line .. " per company)"
     )
   end
   return state
@@ -263,11 +304,15 @@ function M.create_for_hub(storage, force, entity, tick)
     name = last_candidate .. " #" .. id
   end
 
+  -- The tier is read here only to say it in the log: it is not a field of the company any more
+  -- (ADR 0048 §1). A save written by 0.1.0 keeps its stored `tier` and nothing reads it; the storage
+  -- version does not move, because nothing needs migrating.
+  local tier = M.unlocked_tier(force)
+
   local company = {
     id = id,
     name = name,
     type = character_type,
-    tier = M.unlocked_tier(force),
     balance = 0,
     rng = state_after_name,
     weights = weights,
@@ -278,14 +323,115 @@ function M.create_for_hub(storage, force, entity, tick)
 
   ledger.register_company(state, company)
   state.next_company_id = id + 1
-  storage.hubs[unit_number] = { force_index = force.index, company_id = id }
+
+  -- The credit line (ADR 0015 §3): the company is born able to pay a payout, drawn on the federation.
+  -- `poor` sets the line to zero and the company must earn before it spends; `rich` is the default.
+  if state.credit_line ~= nil and state.credit_line > 0 then
+    ledger.transfer(state, ledger.FEDERATION, ledger.company(id), state.credit_line)
+  end
+
+  -- The hub record keeps everything needed to find the entity again after a reload: the counter's
+  -- position and surface are stable, and its elevator is two numbers (scripts/elevator.lua).
+  storage.hubs[unit_number] = {
+    force_index = force.index,
+    company_id = id,
+    surface_index = entity.surface.index,
+    position = { x = entity.position.x, y = entity.position.y },
+    elevator = elevator.new(tick),
+  }
   ledger.assert_conservation(state, "create_for_hub " .. unit_number)
 
   log(
-    "[comptoir] company " .. id .. " " .. name .. " (" .. character_type .. ", tier " .. company.tier
+    "[comptoir] company " .. id .. " " .. name .. " (" .. character_type .. ", tier " .. tier
       .. ") created for counter " .. unit_number .. " on force " .. force.index .. " at tick " .. tick
   )
   return company, true
+end
+
+-- The entity behind a hub record, or nil when the counter is gone (deconstructed between two reads,
+-- or a save whose chunk was cut). Every caller must handle nil: a hub outlives its entity in
+-- `storage` until the destroy event is seen.
+function M.hub_entity(hub)
+  if hub == nil or hub.surface_index == nil or hub.position == nil then
+    return nil
+  end
+  local surface = game.get_surface(hub.surface_index)
+  if surface == nil then
+    return nil
+  end
+  return surface.find_entity("comptoir-counter", hub.position)
+end
+
+function M.hub_by_unit(storage, unit_number)
+  return (storage.hubs or {})[unit_number]
+end
+
+-- Minimum spacing between two counters of the same force and surface (A9, D41).
+-- Returns allowed, distance_to_nearest, unit_number_of_nearest. `distance` is nil when this would be
+-- the first counter, which is not a refusal.
+function M.distance_allows(storage, entity)
+  if entity == nil or entity.valid == false then
+    error("[comptoir] companies.distance_allows: no valid entity", 2)
+  end
+  local min_distance = balance.counter.min_distance
+  local position = entity.position
+  local best, best_unit = nil, nil
+  for _, unit_number in ipairs(sorted_keys(storage.hubs or {})) do
+    local hub = storage.hubs[unit_number]
+    if hub.force_index == entity.force.index and hub.surface_index == entity.surface.index and hub.position ~= nil then
+      local dx = hub.position.x - position.x
+      local dy = hub.position.y - position.y
+      local distance = math.sqrt(dx * dx + dy * dy)
+      if best == nil or distance < best then
+        best, best_unit = distance, unit_number
+      end
+    end
+  end
+  if best ~= nil and best < min_distance then
+    return false, best, best_unit
+  end
+  return true, best, best_unit
+end
+
+-- A deterministic text dump of one force's records, for the harness door (`storage_dump`). Sorted
+-- keys, no formatting: the point is that two dumps of the same state are the same string, and that a
+-- dump of a force that did nothing is unchanged (A26, A28). Read-only, and it serialises nothing but
+-- what the mod itself stores — no game object, no player.
+local function dump_value(value, out)
+  local kind = type(value)
+  if kind == "number" or kind == "string" or kind == "boolean" then
+    out[#out + 1] = tostring(value)
+  elseif kind == "table" then
+    out[#out + 1] = "{"
+    for _, key in ipairs(sorted_keys(value)) do
+      out[#out + 1] = tostring(key) .. "="
+      dump_value(value[key], out)
+      out[#out + 1] = ","
+    end
+    out[#out + 1] = "}"
+  else
+    out[#out + 1] = "<" .. kind .. ">"
+  end
+end
+
+function M.dump_storage(storage, force_index)
+  local out = { "version=" .. tostring(storage.version), ";" }
+  local state = storage.forces and storage.forces[force_index]
+  if state == nil then
+    out[#out + 1] = "no-economy"
+  else
+    dump_value(state, out)
+  end
+  out[#out + 1] = ";hubs="
+  local hubs = {}
+  for _, unit_number in ipairs(sorted_keys(storage.hubs or {})) do
+    local hub = storage.hubs[unit_number]
+    if hub.force_index == force_index then
+      hubs[#hubs + 1] = hub
+    end
+  end
+  dump_value(hubs, out)
+  return table.concat(out)
 end
 
 -- Read-only view for the remote interface (design.md §5): plain numbers and strings only, so the
@@ -303,6 +449,9 @@ function M.snapshot(storage, force_index)
     available = 0,
     total = 0,
     supply = 0,
+    solvency = nil,
+    credit_line = 0,
+    sandbox = false,
     companies = {},
     hubs = {},
   }
@@ -310,6 +459,11 @@ function M.snapshot(storage, force_index)
   local state = storage.forces and storage.forces[force_index]
   if state ~= nil then
     ledger.assert_conservation(state, "snapshot force " .. tostring(force_index))
+    -- The tier is a property of the force's research, so the snapshot derives it here and every
+    -- company of that force reports the same one (ADR 0048 §1). A force that no longer exists has no
+    -- research to read: the field is nil rather than a guessed 1.
+    local force = game.forces[force_index]
+    local tier = force ~= nil and M.unlocked_tier(force) or nil
     out.exists = true
     out.cooperative = state.cooperative
     out.federation = state.federation
@@ -317,6 +471,9 @@ function M.snapshot(storage, force_index)
     out.available = ledger.available(state)
     out.total = ledger.total(state)
     out.supply = state.supply
+    out.solvency = state.solvency
+    out.credit_line = state.credit_line or 0
+    out.sandbox = state.solvency == "unlimited"
 
     for _, id in ipairs(sorted_keys(state.companies)) do
       local company = state.companies[id]
@@ -330,9 +487,13 @@ function M.snapshot(storage, force_index)
           quantity = contract.quantity,
           payout = contract.payout,
           reserve = contract.reserve,
+          deadline_seconds = contract.deadline_seconds,
           deadline_tick = contract.deadline_tick,
           state = contract.state,
           settled = contract.settled,
+          accepted_tick = contract.accepted_tick,
+          dispatched_tick = contract.dispatched_tick,
+          settled_tick = contract.settled_tick,
         }
       end
       local weights = {}
@@ -343,7 +504,7 @@ function M.snapshot(storage, force_index)
         id = company.id,
         name = company.name,
         type = company.type,
-        tier = company.tier,
+        tier = tier,
         balance = company.balance,
         rng = company.rng,
         contract_count = #contracts,
@@ -355,11 +516,19 @@ function M.snapshot(storage, force_index)
 
   for _, unit_number in ipairs(sorted_keys(storage.hubs or {})) do
     local hub = storage.hubs[unit_number]
-    out.hubs[#out.hubs + 1] = {
-      unit_number = unit_number,
-      force_index = hub.force_index,
-      company_id = hub.company_id,
-    }
+    if hub.force_index == force_index then
+      out.hubs[#out.hubs + 1] = {
+        unit_number = unit_number,
+        force_index = hub.force_index,
+        company_id = hub.company_id,
+        surface_index = hub.surface_index,
+        position = hub.position and { x = hub.position.x, y = hub.position.y } or nil,
+        elevator_state = hub.elevator and hub.elevator.state or nil,
+        elevator_phase_ends_tick = hub.elevator and hub.elevator.phase_ends_tick or nil,
+        elevator_sent_tick = hub.elevator and hub.elevator.sent_tick or nil,
+        elevator_return_tick = hub.elevator and hub.elevator.return_tick or nil,
+      }
+    end
   end
 
   return out

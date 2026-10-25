@@ -2,7 +2,7 @@
 
 > Version: 1.0 · Date: 2026-10-25 · Requested by: Philippe Ryf
 > Status: **all ten blocks CLOSED** (2026-10-25) — **67 decisions in force**, 11 withdrawn
-> (Appendix C), 48 ADRs (31 in force), 30 acceptance criteria, **no question left blocking v1**,
+> (Appendix C), 49 ADRs (32 in force), 30 acceptance criteria, **no question left blocking v1**,
 > 12 open questions, all belonging to parked features.
 > Repository: `walbydev/comptoir-contracts` (public GitHub, MIT) — created and verified 2026-10-25.
 > No development before tag `v0.1-cadrage`.
@@ -304,7 +304,7 @@ API for third-party mods beyond the add-on interface, final art.
 | # | Criterion |
 |---|---|
 | A1 | A fresh save honours its **first contract end to end in under 30 minutes**, with the hub and its inventory only — no second building to construct, otherwise the 2-hour horizon never starts |
-| A2 | The hub's inventory accepts insertion by inserter **and** by logistics robot; a contract can only be dispatched when its full quantity is in stock (no partial delivery) |
+| A2 | The hub's inventory accepts insertion **by inserter**; robot feeding is parked (ADR `0049`, measured: `logistic_mode = nil`); a contract is dispatched only when the goods are inside |
 | A3 | The **sum of every company balance, the cooperative and the federation** is unchanged by any operation except the initial endowment — no item leg, one number to assert |
 | A4 | **Withdrawn** (no conversion exists) — replaced by: the shop shows the buying price and the selling price of an item **before** the transaction, and I4 holds on that screen |
 | A5 | The core loads and runs the same scenarios in **both** DLC configurations (headless, two matrices) |
@@ -328,7 +328,7 @@ API for third-party mods beyond the add-on interface, final art.
 | A23 | The quantity field and the presets **never disagree**: a preset writes the field, and the action always acts on the displayed value |
 | A24 | No preset can exceed what the balance allows; a preset that would is **clamped and displays the clamped value before the click** |
 | A25 | The built archive contains **no key, no token, no absolute path**, and the mod declares no dependency that can reach the network |
-| A26 | A fresh save contains **no player name and no player id** anywhere in `storage` |
+| A26 | A fresh save contains no player name and no player id anywhere in `storage` — proven **structurally** in headless (no player can exist there: `game.create_player` does not exist in 2.1), and re-proven on a **played save** at the first release |
 | A27 | Loading a save **with the mod removed** produces the engine's own warning and no crash from `on_load` / `on_configuration_changed` |
 | A28 | On a two-force map, a contract completed by force A leaves force B's cooperative balance and company records **byte-identical** — compared before and after |
 | A29 | **Only `down` may send**: in every other state the send button is disabled and no script path can dispatch |
