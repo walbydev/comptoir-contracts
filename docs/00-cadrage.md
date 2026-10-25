@@ -1,7 +1,7 @@
 # Framing — Company contracts (Factorio 2.1 mod set)
 
 > Version: 0.3 · Date: 2026-10-25 · Requested by: Philippe Ryf
-> Status: **blocks 1–3 CLOSED, block 4 in progress** (2026-10-25) — 57 decisions recorded (4 withdrawn), 32 ADRs, 15
+> Status: **blocks 1–5 written** (2026-10-25) — 57 decisions recorded (4 withdrawn), 32 ADRs, 15
 > acceptance criteria, **no question left blocking v1**, 15 parked with their features.
 > Repository: `walbydev/comptoir-contracts` (public GitHub, MIT) — created and verified 2026-10-25.
 > No development before tag `v0.1-cadrage`.
