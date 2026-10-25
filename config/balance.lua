@@ -11,6 +11,8 @@
 --                           floor 4 min (not 10 min); `target_payout` is read from here and nowhere else
 --              2026-10-25 — solvency dial (ADR 0015 D29): the company credit line, three profiles
 --              2026-10-25 — elevator phases (8 s / 104 s / 8 s), summing to the cycle of ADR 0043
+--              2026-10-25 — ADR 0048 applied: one payout target per tier (2 500 / 7 500 / 20 000)
+--                           replaces the single 2 500; the deadline follows `chain`, not `seconds`
 -- Usages:      required by the data files (prototypes), by the control-stage modules and by settings.lua
 -- Notes:       AGENTS.md requires these numbers in one data file so they can be tuned without
 --              touching logic. A comment explains each value; a value nobody can justify is a bug.
@@ -63,12 +65,19 @@ local M = {
   },
 
   contracts = {
-    -- The payout a generated contract aims at, in credits (ADR 0047 §Defect 2). A contract asks for
-    -- `round(target_payout / payout(item))` units, so cheap goods are asked by the hundred and dear
-    -- ones by the handful. This number lives here and is read by `scripts/contracts.lua`; it is never
-    -- written a second time in code. 2 500 reproduces the canonical first contract of
-    -- docs/05-price-table.md §7: 208 iron plates, 208 x 12 = 2 496 credits.
-    target_payout = 2500,
+    -- The payout a generated contract aims at, in credits, **per tier** (ADR 0048 §1). A contract asks
+    -- for `round(target_payout[tier] / payout(item))` units, where `tier` is the item's own tier from
+    -- `data/prices.lua` — cheap goods are asked by the hundred, dear ones by the handful. A tier-3
+    -- contract pays what a tier-1 contract pays only if the target did not scale, and the requester's
+    -- reading (0048, "2 par palier") is that it must: 2 500 x1, 7 500 x3, 20 000 x8.
+    -- These numbers live here and are read by `scripts/contracts.lua`; they are never written a second
+    -- time in code. Tier 1 reproduces the canonical first contract of docs/05-price-table.md §7:
+    -- 208 iron plates, 208 x 12 = 2 496 credits.
+    target_payout = {
+      [1] = 2500,
+      [2] = 7500,
+      [3] = 20000,
+    },
 
     -- The band the quantity is clamped to (ADR 0047 §Defect 2). The floor is **1**, not 30: a
     -- processing-unit contract is one unit that pays 1 975 with a 395 reserve — small in tonnage,
@@ -81,7 +90,8 @@ local M = {
     -- cheap fast items only — copper cable, a processing unit — and never swallows the formula.
     min_deadline_seconds = 240,
 
-    -- Machines assumed dedicated to a contract (ADR 0034 §4: `quantity x machine_seconds / 2`).
+    -- Machines assumed dedicated to a contract (ADR 0034 §4: `quantity x chain_seconds / 2`). The
+    -- chain is the machine time of the whole recipe tree, per unit, from `data/prices.lua`.
     machines = 2,
 
     -- Slack on the production leg (ADR 0047: `x 1.5`). A deadline that assumes two perfect machines
@@ -128,8 +138,20 @@ do
   if contracts.machines < 1 or contracts.production_slack < 1 then
     error("[comptoir] config/balance: machines and production_slack must be at least 1")
   end
-  if contracts.target_payout < 1 then
-    error("[comptoir] config/balance: target_payout must be positive")
+  -- One target per tier (ADR 0048 §1): a tier without a target is a generator that divides by nil,
+  -- so the table is checked at load, once, rather than discovered by a player.
+  local targets = 0
+  for tier, target in pairs(contracts.target_payout) do
+    if type(tier) ~= "number" or tier % 1 ~= 0 or tier < 1 then
+      error("[comptoir] config/balance: target_payout key " .. tostring(tier) .. " is not a tier")
+    end
+    if type(target) ~= "number" or target % 1 ~= 0 or target < 1 then
+      error("[comptoir] config/balance: target_payout[" .. tier .. "] must be a positive integer")
+    end
+    targets = targets + 1
+  end
+  if targets == 0 then
+    error("[comptoir] config/balance: target_payout carries no tier — the generator has nothing to aim at")
   end
 
   local solvency = M.solvency

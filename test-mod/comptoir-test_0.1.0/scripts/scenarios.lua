@@ -9,6 +9,9 @@
 -- Revisions:   2026-10-25 — initial: A1, A2, A3, A7, A9, A10, A13, A14, A15, A18, A19, A26, A28,
 --                           A29, A30 and the two halves of the mid-flight save (a9-save/a9-resume)
 --              2026-10-25 — waiting halves written with H.after/H.poll (no coroutines in 2.x)
+--              2026-10-25 — ADR 0048: A30 recomputed per tier against `chain` (not `seconds`), with
+--                           tier-2/tier-3 presence asserted; the expiry wait budget follows the
+--                           longer deadlines the chain produces (a tier-1 circuit is 11:57, not 6:00)
 -- Usages:      required by control.lua of the test mod, queued by `scenario.lua`
 -- Notes:       THE NUMBERS ARE RECOMPUTED FROM THE DATA, NEVER COPIED FROM THE MOD. The test mod
 --              requires `data/prices.lua` and `config/balance.lua` of the mod under test and derives
@@ -214,6 +217,9 @@ local function when_paid(force_index, company_id, contract_id, budget, on_done, 
 end
 
 -- Call `on_done(state)` when the contract reaches `expired`, or fail the criterion after `budget`.
+-- The default budget is 60 000 ticks, not 40 000: since ADR 0048 the deadline walks the whole chain,
+-- so an unlocked tier-1 electronic circuit is 11:57 (43 000 ticks) where the single-recipe time said
+-- 6:00 — a 40 000-tick wait would have failed on a draw, not on a bug.
 local function when_expired(force_index, company_id, contract_id, budget, on_done, label)
   H.poll(function()
     local state = snap(force_index)
@@ -222,7 +228,7 @@ local function when_expired(force_index, company_id, contract_id, budget, on_don
       return state
     end
     return false
-  end, budget or 40000, 120, on_done, nil, label or "the contract to expire")
+  end, budget or 60000, 120, on_done, nil, label or "the contract to expire")
 end
 
 -- ---------------------------------------------------------------------------------------------------
@@ -432,7 +438,7 @@ M.a3 = {
       H.ok(accepted_again.ok, "A3: accept again")
       local after_second_accept = checkpoint("second accept")
 
-      when_expired(1, company_id, next_offer.id, 40000, function()
+      when_expired(1, company_id, next_offer.id, 60000, function()
         local after_expiry = checkpoint("expiry")
         H.eq(
           after_expiry.cooperative,
@@ -1006,18 +1012,20 @@ M.a29 = {
 }
 
 -- ---------------------------------------------------------------------------------------------------
--- A30 — a generated deadline is always the round trip plus the production it implies
+-- ---------------------------------------------------------------------------------------------------
+-- A30 — a generated deadline is the round trip plus the production of the whole chain, on every tier
 -- ---------------------------------------------------------------------------------------------------
 
 M.a30 = {
   id = "A30",
-  name = "generated deadline >= elevator cycle + production",
+  name = "generated deadline >= cycle + max(4 min, qty x chain / 2 x 1.5), on all three tiers",
   run = function()
     local force = game.forces["player"]
 
     -- A30 is about the formula, not about the gate (A7/A18 own the gate). Every catalogue recipe is
-    -- unlocked first, so the pool reaches the expensive rows: without them the quantity floor of the
-    -- ADR 0047 correction is never exercised and the check would pass on a wrong formula.
+    -- unlocked first, so the derived tier reaches 3 and the pool spans the three tiers: without a
+    -- tier-2 and a tier-3 item among the thousand draws, the per-tier assertions below would only
+    -- ever exercise the tier-1 target, and the test would prove a third of ADR 0048.
     for name in pairs(prices.items) do
       local recipe = force.recipes[name]
       if recipe ~= nil then
@@ -1026,7 +1034,11 @@ M.a30 = {
     end
     local entity, company_id, state = new_hub(force, { x = 0, y = 0 })
     H.ok(entity.valid, "A30: the counter exists")
-    H.eq(company_of(state, company_id).tier, 3, "A30: the company's tier covers the whole catalogue")
+    H.eq(
+      company_of(state, company_id).tier,
+      3,
+      "A30: the tier is derived from the research and reaches 3, so the whole catalogue is in the pool"
+    )
 
     local answer = act(1, "generate", { company_id = company_id, count = 1000 })
     if not H.ok(answer.ok == true, "A30: 1000 generations ran (" .. tostring(answer.reason) .. ")") then
@@ -1038,56 +1050,177 @@ M.a30 = {
     local floor_seconds = balance.contracts.min_deadline_seconds
     local machines = balance.contracts.machines
     local slack = balance.contracts.production_slack
-    local target = balance.contracts.target_payout
 
-    local too_short = 0
-    local wrong_quantity = 0
-    local worst = nil
+    -- One bucket per tier, so a red names the tier that broke instead of a pooled count, and a green
+    -- cannot hide behind tier 1.
+    local buckets = {}
+    for tier = 1, 3 do
+      buckets[tier] = {
+        count = 0,
+        too_short = 0,
+        wrong_quantity = 0,
+        below_cycle = 0,
+        floor_binding = 0,
+        shortest = nil,
+        quantity_min = nil,
+        quantity_max = nil,
+        items = {},
+      }
+    end
+
+    local unknown_tier = 0
+    local quantity_min = nil
+    local quantity_max = nil
     local distinct = {}
     local distinct_count = 0
-    local saw_floor = false
     for _, contract in ipairs(answer.contracts) do
+      local entry = prices.items[contract.item]
+      local bucket = buckets[entry.tier]
+      if bucket == nil then
+        unknown_tier = unknown_tier + 1
+      else
+        bucket.count = bucket.count + 1
+        bucket.items[contract.item] = (bucket.items[contract.item] or 0) + 1
+        bucket.quantity_min = math.min(bucket.quantity_min or contract.quantity, contract.quantity)
+        bucket.quantity_max = math.max(bucket.quantity_max or contract.quantity, contract.quantity)
+        quantity_min = math.min(quantity_min or contract.quantity, contract.quantity)
+        quantity_max = math.max(quantity_max or contract.quantity, contract.quantity)
+
+        -- deadline >= cycle + max(4 min, qty x chain / 2 x 1.5), recomputed from the two data files.
+        -- `chain` is the whole recipe tree per unit; `seconds` (one recipe) is deliberately unused
+        -- here — a test that read it would keep passing on the wrong unit (ADR 0048 §2).
+        local production = contract.quantity * entry.chain / machines * slack
+        local expected_seconds = math.max(floor_seconds, production) + cycle
+        local expected_ticks = math.ceil(expected_seconds * TICKS_PER_SECOND)
+        local actual_ticks = contract.deadline_tick - contract.offered_tick
+        bucket.shortest = math.min(bucket.shortest or actual_ticks, actual_ticks)
+        if production < floor_seconds then
+          bucket.floor_binding = bucket.floor_binding + 1
+        end
+        if actual_ticks < expected_ticks then
+          bucket.too_short = bucket.too_short + 1
+          if bucket.worst == nil then
+            bucket.worst = contract.item
+              .. ": "
+              .. tostring(actual_ticks)
+              .. " ticks, needs "
+              .. tostring(expected_ticks)
+              .. " ("
+              .. string.format("%.1f", expected_seconds)
+              .. " s)"
+          end
+        end
+        if actual_ticks < cycle * TICKS_PER_SECOND then
+          bucket.below_cycle = bucket.below_cycle + 1
+        end
+
+        -- quantity = clamp(round(target[item tier] / payout(item)), 1, 500) (ADR 0048 §1).
+        local target = balance.contracts.target_payout[entry.tier]
+        local expected_quantity = math.max(1, math.min(500, math.floor(target / entry.payout + 0.5)))
+        if contract.quantity ~= expected_quantity then
+          bucket.wrong_quantity = bucket.wrong_quantity + 1
+          if bucket.worst_quantity == nil then
+            bucket.worst_quantity = contract.item
+              .. ": got "
+              .. tostring(contract.quantity)
+              .. ", expected "
+              .. tostring(expected_quantity)
+              .. " (target "
+              .. tostring(target)
+              .. " / payout "
+              .. tostring(entry.payout)
+              .. ")"
+          end
+        end
+      end
       if distinct[contract.item] == nil then
         distinct[contract.item] = true
         distinct_count = distinct_count + 1
       end
-      if contract.quantity == 1 then
-        saw_floor = true
-      end
-      local entry = prices.items[contract.item]
-      local production = contract.quantity * entry.seconds / machines * slack
-      local expected_seconds = math.max(floor_seconds, production) + cycle
-      local expected_ticks = math.ceil(expected_seconds * TICKS_PER_SECOND)
-      local actual_ticks = contract.deadline_tick - contract.offered_tick
-      if actual_ticks < expected_ticks then
-        too_short = too_short + 1
-        if worst == nil then
-          worst = contract.item .. ": got " .. tostring(actual_ticks) .. " ticks, needs " .. tostring(expected_ticks)
-        end
-      end
-      local expected_quantity = math.floor(target / entry.payout + 0.5)
-      expected_quantity = math.max(1, math.min(500, expected_quantity))
-      if contract.quantity ~= expected_quantity then
-        wrong_quantity = wrong_quantity + 1
-      end
     end
-    H.eq(
-      too_short,
-      0,
-      "A30: every deadline is at least cycle + production" .. (worst and (" (first offender " .. worst .. ")") or "")
+
+    H.eq(unknown_tier, 0, "A30: every generated item has a tier that carries a payout target")
+    H.at_least(
+      distinct_count,
+      10,
+      "A30: the thousand draws cover the catalogue (" .. tostring(distinct_count) .. " items)"
     )
-    H.eq(wrong_quantity, 0, "A30: every quantity is clamp(round(2500 / payout), 1, 500)")
-    H.at_least(distinct_count, 10, "A30: the thousand draws cover the catalogue (" .. tostring(distinct_count) .. " items)")
-    H.ok(saw_floor, "A30: the floor of the corrected formula is reached (a quantity of 1, not 30)")
+
+    -- The fixtures must reach tiers 2 and 3 on purpose: a run that only drew tier-1 items would make
+    -- the two per-tier assertions below vacuous, and the test would prove nothing about 0048.
+    H.at_least(
+      buckets[2].count,
+      1,
+      "A30: at least one tier-2 item is in the fixtures (" .. tostring(buckets[2].count) .. " contracts)"
+    )
+    H.at_least(
+      buckets[3].count,
+      1,
+      "A30: at least one tier-3 item is in the fixtures (" .. tostring(buckets[3].count) .. " contracts)"
+    )
+
+    local floor_total = 0
+    for tier = 1, 3 do
+      local bucket = buckets[tier]
+      floor_total = floor_total + bucket.floor_binding
+      H.at_least(bucket.count, 1, "A30: tier " .. tier .. " was drawn (" .. tostring(bucket.count) .. " contracts)")
+      H.eq(bucket.below_cycle, 0, "A30: tier " .. tier .. " — no deadline shorter than the elevator cycle")
+      H.eq(
+        bucket.too_short,
+        0,
+        "A30: tier "
+          .. tier
+          .. " — every deadline >= cycle + max(4 min, qty x chain / 2 x 1.5)"
+          .. (bucket.worst and (" (first offender " .. bucket.worst .. ")") or "")
+      )
+      H.eq(
+        bucket.wrong_quantity,
+        0,
+        "A30: tier "
+          .. tier
+          .. " — every quantity is clamp(round("
+          .. tostring(balance.contracts.target_payout[tier])
+          .. " / payout), 1, 500)"
+          .. (bucket.worst_quantity and (" (first offender " .. bucket.worst_quantity .. ")") or "")
+      )
+      local drawn = {}
+      for name, count in pairs(bucket.items) do
+        drawn[#drawn + 1] = name .. " x" .. count
+      end
+      table.sort(drawn)
+      H.note(
+        "A30: tier "
+          .. tier
+          .. " — "
+          .. tostring(bucket.count)
+          .. " contracts, quantities "
+          .. tostring(bucket.quantity_min)
+          .. ".."
+          .. tostring(bucket.quantity_max)
+          .. ", shortest deadline "
+          .. string.format("%.1f", bucket.shortest / TICKS_PER_SECOND)
+          .. " s, items: "
+          .. table.concat(drawn, ", ")
+      )
+    end
+
+    H.at_least(floor_total, 1, "A30: the 4-minute floor still binds somewhere, so the max() is exercised")
     H.note(
       "A30: floor "
         .. tostring(floor_seconds)
-        .. " s, cycle "
+        .. " s (binding "
+        .. tostring(floor_total)
+        .. " times), cycle "
         .. tostring(cycle)
         .. " s, machines "
         .. tostring(machines)
         .. ", slack "
         .. tostring(slack)
+        .. "; measured quantities "
+        .. tostring(quantity_min)
+        .. ".."
+        .. tostring(quantity_max)
+        .. ", so neither the floor (1) nor the ceiling (500) of the band is reached — the band is a guard, not a shaping term"
     )
   end,
 }

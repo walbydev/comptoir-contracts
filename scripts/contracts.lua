@@ -12,14 +12,20 @@
 --              2026-10-25 — a8: accept, dispatch, pay, expire and lazy settlement (ADR 0043)
 --              2026-10-25 — ADR 0047: quantity floor 1 (was 30), deadline `max(4 min, qty x machine_s
 --                           / 2 x 1.5) + cycle`, `target_payout` read from config/balance.lua only
+--              2026-10-25 — ADR 0048: one payout target per tier (the item's own tier), the deadline
+--                           follows `chain` (whole recipe tree) instead of `seconds` (one recipe)
 -- Usages:      required by control.lua; called by the remote interface and by the settle pass
 -- Notes:       THE POOL IS A GATE, NOT A NUANCE (A18, ADR 0034 §1): an item enters the pool only if
 --              its recipe is enabled for the force AND its tier is within what the force can build. A
 --              contract asking for a processing unit from a player without a refinery is not a hard
 --              contract, it is a stolen escrow — the escrow was decided before the offer was drawn.
 --              THE DEADLINE ALWAYS EXCEEDS THE CYCLE (A30, ADR 0047): `max(4 min, quantity x
---              machine_seconds / 2 x 1.5) + elevator_cycle`. The floor is a floor on the *production*
+--              chain_seconds / 2 x 1.5) + elevator_cycle`. The floor is a floor on the *production*
 --              leg of one cheap item; the cycle is added on top of it, never absorbed into it.
+--              THE PRODUCTION LEG WALKS THE WHOLE CHAIN (ADR 0048 §2). `chain` is the machine time of
+--              one unit including every intermediate, emitted by tools/cost_table.py; `seconds` is
+--              the last recipe alone, and ten processing units priced on it came out at 6:00 instead
+--              of 35:20. The deadline reads `chain` and nothing else.
 --              PAYMENT WAITS FOR THE CAR (F7, ADR 0043). Dispatch removes the goods and moves nothing
 --              else: the escrow stays held, the cooperative is untouched. The payout is credited by
 --              the settle pass that sees the elevator come back down, and a contract that already
@@ -97,16 +103,33 @@ function M.pool(force, tier)
   return pool
 end
 
--- round(target_payout / payout(item)), clamped to [min_quantity, max_quantity] (ADR 0047 §Defect 2).
+-- The payout a contract of this tier aims at, in credits (ADR 0048 §1). The tier is the **item's own**
+-- tier from the price table, not the company's: a tier-3 company still asks for iron plates by the
+-- hundred, because what scales with the tier is what the item is worth, not who is buying.
+-- A missing tier is a configuration error, not a default: a silent fallback would pay a processing
+-- unit like an iron plate and nobody would see it in a diff.
+function M.target_for_tier(tier)
+  if not is_integer(tier) or tier < 1 then
+    error("[comptoir] contracts.target_for_tier: tier must be a positive integer, got " .. tostring(tier), 2)
+  end
+  local target = balance.contracts.target_payout[tier]
+  if target == nil then
+    error("[comptoir] contracts.target_for_tier: config/balance.lua carries no target for tier " .. tier, 2)
+  end
+  return target
+end
+
+-- round(target_payout[tier] / payout(item)), clamped to [min_quantity, max_quantity] (ADR 0048 §1).
 -- Integer arithmetic: the +payout/2 term is the "round half up" of a division that has no exact
 -- double representation. The floor is 1 — a processing unit is one unit and 1 975 credits — and the
 -- ceiling is 500, the counter's own inventory, so a contract always fits where it is delivered.
-function M.quantity(payout)
+function M.quantity(payout, tier)
   if not is_integer(payout) or payout < 1 then
     error("[comptoir] contracts.quantity: payout must be a positive integer, got " .. tostring(payout), 2)
   end
   local config = balance.contracts
-  local quantity = math.floor((2 * config.target_payout + payout) / (2 * payout))
+  local target = M.target_for_tier(tier)
+  local quantity = math.floor((2 * target + payout) / (2 * payout))
   if quantity < config.min_quantity then
     quantity = config.min_quantity
   elseif quantity > config.max_quantity then
@@ -125,21 +148,22 @@ function M.reserve(payout)
   return math.floor((payout * percent + 99) / 100)
 end
 
--- `max(4 min, quantity x machine_seconds / 2 x 1.5) + cycle`, in seconds (ADR 0047).
--- The slack is applied to the production leg only: the elevator's round trip is a fact, not an
--- estimate, so it is added as it is.
-function M.deadline_seconds(quantity, machine_seconds)
+-- `max(4 min, quantity x chain_seconds / 2 x 1.5) + cycle`, in seconds (ADR 0047, ADR 0048 §2).
+-- `chain_seconds` is the machine time of one unit across the whole recipe tree, read from
+-- `data/prices.lua` (`chain`). The slack is applied to the production leg only: the elevator's round
+-- trip is a fact, not an estimate, so it is added as it is.
+function M.deadline_seconds(quantity, chain_seconds)
   if not is_integer(quantity) or quantity < 1 then
     error("[comptoir] contracts.deadline_seconds: quantity must be a positive integer, got " .. tostring(quantity), 2)
   end
-  if type(machine_seconds) ~= "number" or machine_seconds <= 0 then
+  if type(chain_seconds) ~= "number" or chain_seconds <= 0 then
     error(
-      "[comptoir] contracts.deadline_seconds: machine_seconds must be a positive number, got " .. tostring(machine_seconds),
+      "[comptoir] contracts.deadline_seconds: chain_seconds must be a positive number, got " .. tostring(chain_seconds),
       2
     )
   end
   local config = balance.contracts
-  local production = quantity * machine_seconds / config.machines * config.production_slack
+  local production = quantity * chain_seconds / config.machines * config.production_slack
   return math.max(config.min_deadline_seconds, production) + balance.elevator.cycle_seconds
 end
 
@@ -173,7 +197,7 @@ function M.generate(force, company, tick)
     error("[comptoir] contracts.generate: tick must be a non-negative integer, got " .. tostring(tick), 2)
   end
 
-  local pool = M.pool(force, company.tier)
+  local pool = M.pool(force, companies.unlocked_tier(force))
   if #pool == 0 then
     return nil, "empty_pool"
   end
@@ -188,14 +212,14 @@ function M.generate(force, company, tick)
   company.rng = rng
 
   local entry = prices.items[item]
-  local quantity = M.quantity(entry.payout)
+  local quantity = M.quantity(entry.payout, entry.tier)
   local payout = quantity * entry.payout
   local id = company.next_contract_id
   if not is_integer(id) or id < 1 then
     error("[comptoir] contracts.generate: next_contract_id is not a positive integer", 2)
   end
 
-  local deadline_seconds = M.deadline_seconds(quantity, entry.seconds)
+  local deadline_seconds = M.deadline_seconds(quantity, entry.chain)
 
   local contract = {
     id = id,

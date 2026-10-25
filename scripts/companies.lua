@@ -2,11 +2,14 @@
 --
 -- Description: creates one company per counter, once, and owns everything that makes it an entity:
 --              its name, its character (type plus weights), its commercial tier read from the price
---              table, and its own random stream. It never touches a balance — `scripts/ledger.lua`
---              owns the money (design.md §1).
+--              table **and from the player's research**, and its own random stream. It never touches
+--              a balance — `scripts/ledger.lua` owns the money (design.md §1).
 -- Author:      Philippe Ryf
 -- Created:     2026-10-25
 -- Revisions:   2026-10-25 — initial: creation on build, name, character, tier, Park-Miller LCG
+--              2026-10-25 — ADR 0048: the company no longer stores a tier; it is derived from the
+--                           force's research on every read (cap 3, floor 1). Old saves keep their
+--                           stored `tier` field and it is ignored — no storage version bump.
 -- Usages:      required by control.lua; called by scripts/contracts.lua (pool, draw) and by the
 --              snapshot of the remote interface
 -- Notes:       RANDOMNESS. `math.random` desynchronises a multiplayer game and `game.
@@ -23,6 +26,12 @@
 --              `storage`: a reload reproduces them because nothing ever recomputes them.
 --              Every iteration that writes state walks a sorted key list (design.md §4): Lua's table
 --              order is not guaranteed, and that is how a mod desynchronises without `math.random`.
+--              TIER IS A DERIVATION, NOT A FIELD (ADR 0048 §1). It is the highest tier of an item
+--              whose recipe is enabled for the force, capped at M.MAX_TIER and never below 1 — D57
+--              ("the real gate is the player's research") applied to the generator. Nothing is
+--              written: a company born in 0.1.0 carries a stored `tier` and it is ignored, which is
+--              why the storage version does not move. The accepted consequence is that the day the
+--              player researches oil, every company raises its target at once.
 -- Licence:     MIT (see LICENSE)
 
 local balance = require("__comptoir-contracts__/config/balance")
@@ -41,6 +50,11 @@ M.LCG_MODULUS = 2147483647
 M.LCG_MULTIPLIER = 16807
 
 M.NAME_ATTEMPTS = catalogue.name_attempts
+
+-- The deepest tier the generator will ever reach (ADR 0048 §1). The catalogue's own tiers stop at 3
+-- today; the cap is stated here so a future tier-4 item cannot silently raise what a contract asks
+-- for before the balancing table has a target for it — `contracts.target_for_tier` would raise.
+M.MAX_TIER = 3
 
 local function is_integer(value)
   return type(value) == "number" and value == value and value % 1 == 0
@@ -179,14 +193,18 @@ function M.is_unlocked(force, item)
   return recipe.enabled == true
 end
 
--- The commercial tier of a force: the deepest tier it can actually build. Tiers come from the price
--- table (oil-chain depth, measured), never from the technology tree (ADR 0034 §2).
+-- The commercial tier of a force, **derived on every read and stored nowhere** (ADR 0048 §1): the
+-- highest tier of an item whose recipe is enabled for the force, capped at MAX_TIER and never below 1.
+-- Tiers come from the price table (oil-chain depth, measured), never from the technology tree
+-- (ADR 0034 §2); what makes them reachable is the player's research, and that is a fact about the
+-- force, not about the company. A company that outlives a lost research loses its top tier with it,
+-- which is the honest reading of "the real gate is the player's research" (D57).
 function M.unlocked_tier(force)
   local tier = 1
   local names = sorted_keys(prices.items)
   for _, item in ipairs(names) do
     local entry = prices.items[item]
-    if entry.tier > tier and M.is_unlocked(force, item) then
+    if entry.tier > tier and entry.tier <= M.MAX_TIER and M.is_unlocked(force, item) then
       tier = entry.tier
     end
   end
@@ -286,11 +304,15 @@ function M.create_for_hub(storage, force, entity, tick)
     name = last_candidate .. " #" .. id
   end
 
+  -- The tier is read here only to say it in the log: it is not a field of the company any more
+  -- (ADR 0048 §1). A save written by 0.1.0 keeps its stored `tier` and nothing reads it; the storage
+  -- version does not move, because nothing needs migrating.
+  local tier = M.unlocked_tier(force)
+
   local company = {
     id = id,
     name = name,
     type = character_type,
-    tier = M.unlocked_tier(force),
     balance = 0,
     rng = state_after_name,
     weights = weights,
@@ -320,7 +342,7 @@ function M.create_for_hub(storage, force, entity, tick)
   ledger.assert_conservation(state, "create_for_hub " .. unit_number)
 
   log(
-    "[comptoir] company " .. id .. " " .. name .. " (" .. character_type .. ", tier " .. company.tier
+    "[comptoir] company " .. id .. " " .. name .. " (" .. character_type .. ", tier " .. tier
       .. ") created for counter " .. unit_number .. " on force " .. force.index .. " at tick " .. tick
   )
   return company, true
@@ -437,6 +459,11 @@ function M.snapshot(storage, force_index)
   local state = storage.forces and storage.forces[force_index]
   if state ~= nil then
     ledger.assert_conservation(state, "snapshot force " .. tostring(force_index))
+    -- The tier is a property of the force's research, so the snapshot derives it here and every
+    -- company of that force reports the same one (ADR 0048 §1). A force that no longer exists has no
+    -- research to read: the field is nil rather than a guessed 1.
+    local force = game.forces[force_index]
+    local tier = force ~= nil and M.unlocked_tier(force) or nil
     out.exists = true
     out.cooperative = state.cooperative
     out.federation = state.federation
@@ -477,7 +504,7 @@ function M.snapshot(storage, force_index)
         id = company.id,
         name = company.name,
         type = company.type,
-        tier = company.tier,
+        tier = tier,
         balance = company.balance,
         rng = company.rng,
         contract_count = #contracts,

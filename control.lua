@@ -11,6 +11,8 @@
 --              2026-10-25 — building a counter creates its company; `snapshot` exposed to the remote API
 --              2026-10-25 — a8/a9/a10: spacing check with refund, first offers on build, `act` door
 --                           (accept, dispatch, buy, sell, generate), settle pass before every read
+--              2026-10-25 — ADR 0048: `quantity_for_payout` takes the item's tier, `deadline_seconds`
+--                           takes the item's chain (the two formula doors follow the generator)
 -- Usages:      executed by the game once per session, before any other control-stage file
 -- Notes:       `require` is only legal while control.lua files are being parsed — never inside a
 --              handler (measured on 2.1.23: "Require can't be used outside of control.lua parsing").
@@ -259,13 +261,17 @@ remote.add_interface("comptoir-contracts", {
     end
     return ledger.assert_conservation(state, "remote " .. force_index)
   end,
-  quantity_for_payout = function(payout)
-    return contracts.quantity(payout)
+  -- The two formulas, exposed so a harness can recompute a contract instead of trusting it.
+  -- `quantity_for_payout` takes the **item's tier** as a second argument (ADR 0048 §1: the target
+  -- scales per tier) and `deadline_seconds` takes the item's `chain`, not its single-recipe `seconds`
+  -- (ADR 0048 §2). A caller that forgets the tier gets an explicit error, never a tier-1 default.
+  quantity_for_payout = function(payout, tier)
+    return contracts.quantity(payout, tier)
   end,
   reserve_for_payout = function(payout)
     return contracts.reserve(payout)
   end,
-  deadline_seconds = function(quantity, machine_seconds)
-    return contracts.deadline_seconds(quantity, machine_seconds)
+  deadline_seconds = function(quantity, chain_seconds)
+    return contracts.deadline_seconds(quantity, chain_seconds)
   end,
 })
