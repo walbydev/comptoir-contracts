@@ -103,6 +103,10 @@ A change is done when:
 | `prototypes.technology[...].unit` is not exposed at runtime | a test cannot read a technology's packs; the tier comes from our generated file |
 | A non-recoverable error can still exit **0** in benchmark mode | the runner greps the log, and never trusts the exit code alone |
 | `luac` is absent on this host | `make check` cannot pass; the syntax check is a headless load, quoted |
+| `on_nth_tick(N)` also fires at **tick 0** (`0 % N == 0`) | a phased test timeline where every phase sits on a multiple ran every phase at once and produced meaningless numbers |
+| **Benchmark mode never writes a save** (`auto_save` and `server_save` both return nothing) | the persistence check needs `--start-server`, not `--benchmark` |
+| `game.get_entity_by_unit_number` returns **nil** for entities obtained from `find_entities_filtered` | re-look entities up by name and position in tests |
+| A `furnace`'s `source_inventory_size` **cannot exceed 1** | the furnace is not a candidate hub type — the energy-capable inventory would have to be an assembling machine |
 
 ## 5. Release record — the by-eye criteria
 
