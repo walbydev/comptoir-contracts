@@ -29,8 +29,13 @@
 --                           down with the reason and the countdown on the button, one feedback row under
 --                           the tabs rewritten by every action, and ONE bounded `on_nth_tick(30)` that
 --                           starts with the first window and stops with the last
+--              2026-10-25 — ADR 0057: the header's handover button. `player.opened = entity` gives the
+--                           engine the inventory back and raises on_gui_opened again, so the click arms
+--                           `handover[player_index]`, `on_opened` consumes it once and returns without
+--                           suppressing, and the flag is dropped on close, on the player leaving and by
+--                           a one-shot `on_tick` on the tick after the handover
 -- Usages:      required by control.lua, wired to on_gui_opened / on_gui_closed / on_gui_click /
---              on_gui_text_changed; the pure part lives in scripts/gui/format.lua
+--              on_gui_text_changed / on_player_left_game; the pure part lives in scripts/gui/format.lua
 -- Notes:       THE WINDOW IS NOT TESTABLE HEADLESS (ADR 0050). The measured prerequisite is the
 --              probe in `spike/gui-probe/`: setting `player.opened = nil` inside on_gui_opened, then
 --              adding the frame to `player.gui.screen`, replaces the vanilla container frame. That is
@@ -41,7 +46,9 @@
 --              action; the header's countdown is the one thing that has to move on its own, so this
 --              module registers `script.on_nth_tick(30)` when the first window opens and unregisters
 --              it the moment the last one closes — including when that window cannot be drawn any
---              more (destroyed, player gone). No other tick exists in the mod.
+--              more (destroyed, player gone). The only other tick is the handover's one-shot
+--              `on_tick` (ADR 0057): registered by the header button, it expires the flag and removes
+--              itself; it never survives the tick it was registered for.
 --              THE TAB AND THE QUANTITY ARE PER PLAYER AND NEVER IN `storage`: two local tables, lost
 --              on reload on purpose (a window is not economy). The frame itself survives a save, so a
 --              click on a window whose binding was lost destroys it and says so instead of guessing
@@ -102,6 +109,8 @@ local HEADER_RESERVED = "comptoir_header_reserved"
 local HEADER_ELEVATOR = "comptoir_header_elevator"
 local HEADER_ELEVATOR_STATE = "comptoir_header_elevator_state"
 local HEADER_ELEVATOR_CLOCK = "comptoir_header_elevator_clock"
+local HEADER_HANDOVER = "comptoir_header_handover"
+local HANDOVER_BUTTON = "comptoir_handover"
 local FEEDBACK_TEXT = "comptoir_feedback_text"
 local TABS = "comptoir_tabs"
 local TAB_CONTRACTS = "ct_tab_contracts"
@@ -167,6 +176,7 @@ M.GEOMETRY = {
   header_character = { ICON_SHOP, COL_CHARACTER_TEXT },
   header_numbers = { NUM_CELL, NUM_CELL },
   header_elevator = { COL_LIFT_STATE, COL_LIFT_CLOCK },
+  header_handover = { ROW_WIDTH },
   feedback_line = { ROW_WIDTH },
   quantity_line = { COL_QUANTITY_LABEL, FIELD_WIDTH, PRESET_WIDTH, PRESET_WIDTH, PRESET_WIDTH, PRESET_WIDTH },
   contract_time = { BAR_WIDTH, COL_CLOCK },
@@ -182,6 +192,7 @@ do
     { "header_line", M.GEOMETRY.header_line, ROW_WIDTH },
     { "header_numbers", M.GEOMETRY.header_numbers, ROW_WIDTH },
     { "header_elevator", M.GEOMETRY.header_elevator, ROW_WIDTH },
+    { "header_handover", M.GEOMETRY.header_handover, ROW_WIDTH },
     { "feedback_line", M.GEOMETRY.feedback_line, ROW_WIDTH },
     { "quantity_line", M.GEOMETRY.quantity_line, ROW_WIDTH },
     { "header_character", M.GEOMETRY.header_character, COL_CHARACTER },
@@ -285,6 +296,111 @@ end
 
 -- The interval itself, so a scenario never hard-codes 30.
 M.CLOCK_INTERVAL = CLOCK_INTERVAL
+
+-- ---------------------------------------------------------------------------------------------------
+-- The handover guard (ADR 0057)
+-- ---------------------------------------------------------------------------------------------------
+-- The header's handover button gives the entity back to the engine: `player.opened = entity` makes the
+-- vanilla container frame appear — and raises `on_gui_opened` again, the very event this module
+-- suppresses. Without a flag the handler takes the inventory back in the same tick and the button looks
+-- dead in a log that says nothing. So the click ARMS `handover[player_index]`, `on_opened` CONSUMES it
+-- once and returns without suppressing, and the flag is dropped on close, on the player leaving and by
+-- the one-shot tick at the end of this block.
+--
+-- The flag is transient by design. A flag that outlived its tick could swallow a REAL open: the player
+-- would click the counter and get the inventory instead of the window, once, at a moment no log line
+-- would explain. The four functions below decide the whole guard and touch no game object — no player,
+-- no element — so the bench drives them directly (scenario B6-handover) on crafted indices, which is
+-- the only half a headless run can reach (ADR 0050: a player cannot exist without a client).
+local handover = {}   -- player_index -> the tick it was armed at
+
+-- 1. Before the assignment, never after: the event it raises arrives in the same tick.
+function M.handover_arm(player_index, tick)
+  if type(player_index) ~= "number" or type(tick) ~= "number" then
+    error("[comptoir] gui.window.handover_arm: a player index and a tick are required", 2)
+  end
+  handover[player_index] = tick
+end
+
+-- 2. The one reader of the flag. `true` means "this open is our own handover coming back": the caller
+-- returns without suppressing anything. The flag is gone afterwards, so a SECOND open in the same tick
+-- is a real open and goes through the normal path.
+function M.handover_consume(player_index)
+  if handover[player_index] == nil then
+    return false
+  end
+  handover[player_index] = nil
+  return true
+end
+
+-- 3. Dropped when the container closes and when its player leaves: a handover never outlives its frame.
+function M.handover_clear(player_index)
+  handover[player_index] = nil
+end
+
+-- 4. The backstop: drop every flag armed before `tick` and answer how many were dropped. Called from
+-- the tick after the handover, so "armed before now" and "stale" are the same sentence.
+function M.handover_sweep(tick)
+  if type(tick) ~= "number" then
+    error("[comptoir] gui.window.handover_sweep: a tick is required", 2)
+  end
+  local dropped = 0
+  for player_index, armed_at in pairs(handover) do
+    if armed_at < tick then
+      handover[player_index] = nil
+      dropped = dropped + 1
+    end
+  end
+  return dropped
+end
+
+-- Read-only, for the bench and for the reader: is a handover pending for this player?
+function M.handover_pending(player_index)
+  return handover[player_index] ~= nil
+end
+
+-- The one-shot tick that expires the flag (ADR 0057). ONE `on_tick`, registered by the handover and
+-- unregistered by its own handler as soon as nothing is left to expire — the mod still has no permanent
+-- tick, and this one lives for a single tick per handover. `script` events are raised before the rest of
+-- the tick, so this runs at the START of the tick after the handover, which is exactly the moment the
+-- decision was taken. `runs` is the bench's witness that it really came off (a registration that failed
+-- to unregister would keep counting).
+local handover_expiry
+local handover_watch = { registered = false, runs = 0 }
+
+local function handover_watch_stop()
+  if handover_watch.registered then
+    script.on_event(defines.events.on_tick, nil)
+    handover_watch.registered = false
+  end
+end
+
+function M.handover_watch_start()
+  if not handover_watch.registered then
+    script.on_event(defines.events.on_tick, handover_expiry)
+    handover_watch.registered = true
+  end
+end
+
+function M.handover_watching()
+  return handover_watch.registered
+end
+
+function M.handover_watch_runs()
+  return handover_watch.runs
+end
+
+handover_expiry = function()
+  handover_watch.runs = handover_watch.runs + 1
+  M.handover_sweep(game.tick)
+  if next(handover) == nil then
+    -- Nothing left to expire — including the reload path: a save taken between the arm and the next
+    -- tick reloads with the engine still holding this handler while the per-player table is gone (it is
+    -- deliberately not in `storage`). Closing the registration here is the difference between a bounded
+    -- tick and one that runs for the rest of the save for no reason.
+    handover_watch_stop()
+  end
+end
 
 -- The catalogue's three groups, one literal key each: the character line of the header is a localised
 -- string, and the family prefix lives in the section name (`[comptoir]`), so a key is the bare name
@@ -536,6 +652,15 @@ local function build(player)
   local lift = full_row(header, { type = "flow", name = HEADER_ELEVATOR, direction = "horizontal" })
   cell(lift.add({ type = "label", name = HEADER_ELEVATOR_STATE, caption = "" }), COL_LIFT_STATE)
   cell(lift.add({ type = "label", name = HEADER_ELEVATOR_CLOCK, caption = "" }), COL_LIFT_CLOCK, "right")
+
+  -- The handover (ADR 0057): one button, the whole width of the row, in the header because the stock is
+  -- a fact of the counter and not of a tab. The frame is the row, so no caption of either locale can
+  -- push it out of the frame (A20) — and it is the only element of the window the engine takes over.
+  local handover_row = full_row(header, { type = "flow", name = HEADER_HANDOVER, direction = "horizontal" })
+  button_cell(
+    handover_row.add({ type = "button", name = HANDOVER_BUTTON, caption = { "comptoir.handover" } }),
+    ROW_WIDTH
+  )
 
   local tabbar = full_row(root, { type = "flow", name = TABS, direction = "horizontal" })
   button_cell(tabbar.add({ type = "button", name = TAB_CONTRACTS, caption = { "comptoir.tab-contracts" } }), NUM_CELL)
@@ -873,6 +998,15 @@ end
 -- ---------------------------------------------------------------------------------------------------
 
 function M.on_opened(storage, event)
+  -- ADR 0057: the handover button's own click comes back as this event, because setting
+  -- `player.opened = entity` raises on_gui_opened. Consume the flag and RETURN WITHOUT suppressing:
+  -- the vanilla container frame is precisely what the button asked for. Consumed once, never twice —
+  -- the flag is gone from here on, so a second open in the same tick is handled below like any other
+  -- and the window keeps its own frame.
+  if M.handover_consume(event.player_index) then
+    return
+  end
+
   local entity = event.entity
   if entity == nil or entity.valid == false then
     return
@@ -909,6 +1043,10 @@ function M.on_opened(storage, event)
 end
 
 function M.on_closed(storage, event)
+  -- ADR 0057: a handover never outlives the frame it opened. Closing the vanilla container — or our own
+  -- window — drops the flag, so it cannot be waiting for the next open; the sweep is the backstop, not
+  -- the plan.
+  M.handover_clear(event.player_index)
   if self_closed_tick[event.player_index] == game.tick then
     self_closed_tick[event.player_index] = nil
     return
@@ -918,6 +1056,17 @@ function M.on_closed(storage, event)
   -- The last window to close stops the clock (ADR 0056 §2). `destroy` above answers for a player who is
   -- still here; a player who is gone has no frame left to destroy.
   M.untrack(event.player_index)
+end
+
+-- ADR 0057: a player who leaves takes the flag with them. The countdown clock would drop a window it can
+-- no longer draw, but a handover has already destroyed the window — there is no clock left to walk the
+-- per-player tables, so this is the path that has to clean up on its own. `on_player_left_game` is
+-- registered in control.lua; the name is proved there (an unknown event fails the load).
+function M.on_left_game(storage, event)
+  local player_index = event.player_index
+  M.handover_clear(player_index)
+  destroy(game.get_player(player_index))
+  M.untrack(player_index)
 end
 
 -- A refused action says why, in the player's language, from one key per reason. A code this table does
@@ -1063,6 +1212,29 @@ function M.on_text_changed(storage, event)
   regate(root_of(player), ctx, player, clamped)
 end
 
+-- ADR 0057: hand the entity back to the engine, so the player can see and move the stock the counter is
+-- holding. The order is the ADR's, and every line of it matters:
+--   1. arm the flag — BEFORE the assignment, because the assignment raises on_gui_opened in the same tick
+--      and the handler has to know that open is ours;
+--   2. `player.opened = entity` — the engine opens the vanilla container frame (the one R1 suppressed);
+--   3. destroy our frame — two frames must not share the screen, and this is not a close the player asked
+--      for, so it is not a refusal or a feedback either;
+--   4. untrack — the window is gone, so the countdown has nothing left to draw and the clock stops with it.
+-- Nothing here touches the economy: the stock stays where the inserters and the robots already work.
+local function hand_over(storage, player, ctx)
+  local entity = ctx.entity
+  if entity == nil or entity.valid ~= true then
+    refuse(player, "no_entity")
+    refresh(storage, player)
+    return
+  end
+  M.handover_arm(player.index, game.tick)
+  M.handover_watch_start()
+  player.opened = entity
+  destroy(player)
+  M.untrack(player.index)
+end
+
 function M.on_click(storage, event)
   local element = event.element
   if element == nil or element.valid == false then
@@ -1091,6 +1263,11 @@ function M.on_click(storage, event)
   if name == TAB_CONTRACTS or name == TAB_SHOP then
     tabs[event.player_index] = name
     refresh(storage, player)
+    return
+  end
+
+  if name == HANDOVER_BUTTON then
+    hand_over(storage, player, ctx)
     return
   end
 

@@ -2,7 +2,8 @@
 --
 -- Description: the mod's runtime entry point. Each `script.on_*` handler forwards to one function of
 --              one module; this file holds no decision, no state and no arithmetic. Reading it must
---              be enough to know which events the mod listens to — and to see that on_tick is absent.
+--              be enough to know which events the mod listens to — and to see that no permanent tick
+--              is registered (the two bounded ones live in scripts/gui/window.lua).
 --              It also declares the one remote interface the harness (and any add-on) uses to read and
 --              drive the economy (design.md §5, correction to ADR 0042).
 -- Author:      Philippe Ryf
@@ -18,6 +19,10 @@
 --              2026-10-25 — ADR 0056 §2: `accept` and the two trades are handed the company's counter,
 --                           so every action of the door refuses while the car is away. This file is
 --                           still wiring only: the pause lives in the modules, the clock in the window.
+--              2026-10-25 — ADR 0057: `on_player_left_game` wired to `window.on_left_game`, the fifth
+--                           GUI-related event. The handover's one-shot `on_tick` is registered by the
+--                           window module itself, not here: it lives for a single tick per handover
+--                           and this file still holds no tick.
 -- Usages:      executed by the game once per session, before any other control-stage file
 -- Notes:       `require` is only legal while control.lua files are being parsed — never inside a
 --              handler (measured on 2.1.23: "Require can't be used outside of control.lua parsing").
@@ -28,9 +33,11 @@
 --              itself cannot be raised by script, and `script_raised_built` is dispatched when raised
 --              from an event handler, but not from `on_init`).
 --              NO TICK HANDLER IN THIS FILE: the trips, the deadlines and the refills are settled by
---              the read that needs them (`scripts/contracts.lua`). The one clock in the mod is the
---              counter window's (scripts/gui/window.lua, ADR 0056 §2) — it starts when the first window
---              opens and stops when the last one closes — and it is not wired here either.
+--              the read that needs them (`scripts/contracts.lua`). The window module owns the two
+--              bounded ticks and wires them itself: the counter window's 30-tick clock (ADR 0056 §2),
+--              which starts with the first window and stops with the last, and the handover's one-shot
+--              `on_tick` (ADR 0057), which expires a stale flag on the tick after the button and
+--              removes itself in the same handler.
 --              `act` is a door on the rules, not a second implementation of them: it validates the
 --              shape of the arguments, settles what is due, calls one module function and copies the
 --              answer out. The verdicts (`ok`, `reason`) are the modules'.
@@ -141,12 +148,15 @@ script.on_event(defines.events.script_raised_built, on_built)
 script.on_event(defines.events.on_entity_died, on_destroyed)
 script.on_event(defines.events.script_raised_destroy, on_destroyed)
 
--- The window (lot b). Four events, no tick: the frame is drawn when it opens, on a tab change, on a
--- preset and after every action, never on a clock (docs/06 §1).
+-- The window (lot b). Five events, no permanent tick: the frame is drawn when it opens, on a tab
+-- change, on a preset and after every action, never on a clock (docs/06 §1).
 -- Opening the counter replaces the vanilla container frame: `player.opened = nil` inside
 -- on_gui_opened, then a frame in `player.gui.screen` (measured 2026-10-25, ADR 0050, and the working
 -- probe in `spike/gui-probe/`). The close caused by that assignment bounces back as on_gui_closed in
 -- the same tick and is ignored by `window.on_closed`.
+-- `on_player_left_game` is the fifth (ADR 0057): a handover flag belongs to a player, and a player who
+-- leaves must not leave one behind. Its name is proved by this very registration — an event the engine
+-- does not know fails the load, so no scenario would ever run.
 script.on_event(defines.events.on_gui_opened, function(event)
   window.on_opened(storage, event)
 end)
@@ -158,6 +168,9 @@ script.on_event(defines.events.on_gui_click, function(event)
 end)
 script.on_event(defines.events.on_gui_text_changed, function(event)
   window.on_text_changed(storage, event)
+end)
+script.on_event(defines.events.on_player_left_game, function(event)
+  window.on_left_game(storage, event)
 end)
 
 script.on_init(function()

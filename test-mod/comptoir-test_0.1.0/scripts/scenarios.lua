@@ -24,6 +24,10 @@
 --                           of its cells plus the spacing, and the frame is that content plus two
 --                           paddings, so a button cannot be drawn outside it. The shop ladder is 15
 --                           items: `pipe` left the catalogue (ADR 0052)
+--              2026-10-25 — B6-handover (ADR 0057): the handover flag on crafted indices — armed,
+--                           consumed exactly once, a second open in the same tick being a real open, a
+--                           stale flag dropped by the next tick and by the close — plus the one-shot
+--                           expiry tick measured in this process, caption handed to the engine
 -- Usages:      required by control.lua of the test mod, queued by `scenario.lua`
 -- Notes:       THE NUMBERS ARE RECOMPUTED FROM THE DATA, NEVER COPIED FROM THE MOD. The test mod
 --              requires `data/prices.lua` and `config/balance.lua` of the mod under test and derives
@@ -1593,6 +1597,7 @@ M["b1-gui-pure"] = {
     H.eq(row_sum(geometry.header_line), geometry.row_width, "A20: the header line fills it")
     H.eq(row_sum(geometry.header_numbers), geometry.row_width, "A20: the two header figures share it")
     H.eq(row_sum(geometry.header_elevator), geometry.row_width, "A20: the elevator line fills it too")
+    H.eq(row_sum(geometry.header_handover), geometry.row_width, "A20: the handover row is the button and nothing else")
     H.eq(row_sum(geometry.feedback_line), geometry.row_width, "A20: and so does the feedback line")
     H.eq(row_sum(geometry.quantity_line), geometry.row_width, "A20: the quantity line fills it")
     H.eq(
@@ -1617,7 +1622,7 @@ M["b1-gui-pure"] = {
     local cell_count = 0
     for _, name in ipairs({
       "shop_row", "contract_row", "header_line", "header_numbers", "quantity_line",
-      "header_character", "contract_time",
+      "header_character", "contract_time", "header_handover",
     }) do
       for _, width in ipairs(geometry[name]) do
         cell_count = cell_count + 1
@@ -2064,8 +2069,10 @@ M["b4-clock"] = {
             "B4-clock: `on_nth_tick(30)` is registered by the first window and unregistered by the last "
               .. "one — including the case where the handler itself drops a window it can no longer draw "
               .. "(counter destroyed, player gone, no client). The run counter of the handler is the "
-              .. "witness: it grows while a window is tracked and freezes afterwards. The mod has no other "
-              .. "tick: `advance`, the deadlines and the refills stay lazy."
+              .. "witness: it grows while a window is tracked and freezes afterwards. This is the mod's "
+              .. "only recurring tick: `advance`, the deadlines and the refills stay lazy, and the one "
+              .. "other registration (the handover's one-shot `on_tick`, ADR 0057) lives for the tick "
+              .. "after a button click and takes itself off — scenario B6-handover measures that it does."
           )
         end)
       end)
@@ -2133,12 +2140,112 @@ M["b5-sprite"] = {
   end,
 }
 
+-- ---------------------------------------------------------------------------------------------------
+-- B6-handover — the flag that lets the engine's inventory through, exactly once (ADR 0057)
+-- ---------------------------------------------------------------------------------------------------
+-- ADR 0050 says a player cannot exist headless, so neither `on_opened` nor `on_click` can be called
+-- here, and "the vanilla container frame appears" cannot be observed from a server with no client. What
+-- CAN be proven is the half that decides the outcome: the four operations of the flag, on crafted
+-- player indices, and the one-shot tick that expires it — registered in this very process, so its expiry
+-- and its unregistration are measured rather than described. The button's caption is handed to the
+-- engine (H.probe_locale), which is the only part of "the player sees a button" a headless run reaches.
+
+M["b6-handover"] = {
+  id = "B6-handover",
+  name = "the handover flag is armed, consumed exactly once, and can never outlive its tick",
+  run = function()
+    -- The event the flag is cleared on is registered by control.lua while it is parsed: an event name
+    -- the engine does not know fails the load, and no scenario would run at all. Asserted anyway,
+    -- because that failure mode is silent in a log nobody reads.
+    H.ok(
+      defines.events.on_player_left_game ~= nil,
+      "B6-handover: on_player_left_game exists, so the flag is cleared when its player leaves"
+    )
+
+    -- Cases 1 and 2: armed before the assignment, consumed exactly once by the open it causes. The
+    -- second open in the same tick is a real open and takes the normal path — that is the difference
+    -- between a guard and a latch that swallows the next click.
+    H.eq(gui_window.handover_pending(1), false, "B6-handover: no flag is pending before the button is pressed")
+    gui_window.handover_arm(1, game.tick)
+    H.eq(gui_window.handover_pending(1), true, "B6-handover: the button arms the flag before it touches player.opened")
+    H.eq(
+      gui_window.handover_consume(1),
+      true,
+      "B6-handover: the on_gui_opened that the assignment raises is recognised, and passes through unsuppressed"
+    )
+    H.eq(gui_window.handover_pending(1), false, "B6-handover: it was consumed, not merely read — the flag is gone")
+    H.eq(
+      gui_window.handover_consume(1),
+      false,
+      "B6-handover: a second open in the same tick is a real open, suppressed as usual"
+    )
+
+    -- Case 3: a stale flag cannot survive. The sweep is the tick's own arithmetic, so its count is the
+    -- witness — a sweep that decided nothing would answer 0 and leave the flag to swallow a real open.
+    local now = game.tick
+    gui_window.handover_arm(2, now)
+    H.eq(gui_window.handover_sweep(now), 0, "B6-handover: sweeping the handover's own tick drops nothing")
+    H.eq(
+      gui_window.handover_consume(2),
+      true,
+      "B6-handover: a flag armed this tick is still there for the open it is waiting for"
+    )
+    gui_window.handover_arm(3, now)
+    H.eq(gui_window.handover_sweep(now + 1), 1, "B6-handover: sweeping the next tick drops the stale flag")
+    H.eq(
+      gui_window.handover_consume(3),
+      false,
+      "B6-handover: so the next real open after a lost handover is a real open, never swallowed"
+    )
+
+    -- Case 4: closing the container hands the flag back before any open can arrive.
+    gui_window.handover_arm(4, now)
+    gui_window.handover_clear(4)
+    H.eq(
+      gui_window.handover_consume(4),
+      false,
+      "B6-handover: the close drops the flag, so the next open is the player's and not a leftover"
+    )
+
+    -- The one-shot tick, in the engine. `runs` is the witness in both directions: it proves the handler
+    -- really ran on the tick after the handover, and — once frozen — that the registration really came
+    -- off. A handler that stayed registered would keep counting, and the last assertion would go red.
+    H.eq(gui_window.handover_watching(), false, "B6-handover: no expiry tick is registered while no flag is pending")
+    gui_window.handover_arm(5, game.tick)
+    gui_window.handover_watch_start()
+    H.eq(gui_window.handover_watching(), true, "B6-handover: a handover registers the expiry tick")
+    local runs = gui_window.handover_watch_runs()
+    H.after(4, function()
+      H.ok(gui_window.handover_watch_runs() > runs, "B6-handover: the expiry handler ran on the tick after the handover")
+      H.eq(gui_window.handover_pending(5), false, "B6-handover: it dropped the flag nothing consumed")
+      H.eq(gui_window.handover_watching(), false, "B6-handover: and unregistered itself, nothing being left to expire")
+      local frozen = gui_window.handover_watch_runs()
+      H.after(60, function()
+        H.eq(gui_window.handover_watch_runs(), frozen, "B6-handover: the tick really came off — its counter stopped moving")
+        H.note(
+          "B6-handover: proven — the flag is armed before the assignment, the open it raises is recognised "
+            .. "once and passes through unsuppressed, a second open in the same tick is a real open, a stale "
+            .. "flag is dropped by the tick after the handover and by the close (and by the player leaving, "
+            .. "whose event is wired in control.lua and exists in this engine), and the one-shot tick that "
+            .. "does it unregisters itself. NOT provable headless (ADR 0050): the click on the button, the "
+            .. "`player.opened = entity` assignment and the vanilla container frame appearing are client "
+            .. "behaviour, and no player can be created here — the four guard functions above are the whole "
+            .. "of what decides them, and they are tested as pure logic. The caption is rendered by the "
+            .. "engine below; `tools/check_locale.py` proves the key exists in both locales."
+        )
+      end)
+    end)
+
+    H.probe_locale("handover", { "comptoir.handover" })
+  end,
+}
+
 -- The queue, in the order `docs/09-tests.md` lists the criteria.
 M.ORDER = {
   "a1", "a2", "a3", "a7", "a9", "a10", "a13", "a14", "a15", "a18", "a19", "a26", "a28", "a29", "a30",
   "a31",
   "b1-gui-pure",
-  "b2-pause", "b3-feedback", "b4-clock", "b5-sprite",
+  "b2-pause", "b3-feedback", "b4-clock", "b5-sprite", "b6-handover",
   "a9-save", "a9-resume",
 }
 

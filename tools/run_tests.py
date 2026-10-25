@@ -87,6 +87,7 @@ RUNS = [
     ("b3-feedback", "B3-feedback", None),
     ("b4-clock", "B4-clock", None),
     ("b5-sprite", "B5-sprite", None),
+    ("b6-handover", "B6-handover", None),
 ]
 
 SOLVENCY_SETTING = "comptoir-solvency"
