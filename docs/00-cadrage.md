@@ -150,7 +150,7 @@ onto what already exists.
 | D46 | Price band | `cost < payout < price (= cost × 1.5)` governs **every** number in the single table | D30, `0006` |
 | D47 | Escrow amount | `reserved = ceil(payout × rate)`, **one rate for the whole set**, in the price table. A contract **cannot be accepted** if the cooperative's free balance does not cover it | ADR `0028` |
 | D48 | Shop safety valve | The shop **always buys**, contract or not: it is the only way back from a cooperative at zero, and therefore the safety valve of the economy | ADR `0028` |
-| D49 | Hub power | The hub has a **small electric draw**: it must be connected to a grid, which is a placement constraint for free and a closed counter when unpowered | ADR `0030` |
+| D49 | Hub power | The hub has a **small electric draw**: it must be connected to a grid, which is a placement constraint for free and a closed counter when unpowered — **CONTRADICTION 2026-10-25**: a `container` prototype has **no energy model** (measured), so this cannot hold with D31. Resolution in ADR `0045`, Q58 pending | ADR `0030`, `0045` |
 | D50 | Naming | **`<family>-<feature>`**, lowercase, hyphenated; the family is chosen once, before the first release, and never after. Candidates: `charter`, `concord`, `outpost`; recommendation `charter` | ADR `0029` |
 | D51 | Locale | Interface available in **English and French** (`locale/en`, `locale/fr`); every string goes in both files | Q49 → settled |
 | D52 | Energy role | An entity's energy source is **fixed by prototype**: a hub cannot become a producer. Orbital power therefore needs a **second prototype** (a receiver), which is a second loop | ADR `0031` |
@@ -527,6 +527,7 @@ resolved with its feature, not before.
 | ~~Q55~~ | ~~Quantity control?~~ → **a field with presets** `1/10/100/stack`, one shared value (D63, ADR `0038`) | — | Philippe | **settled 2026-10-25** |
 | ~~Q56~~ | ~~Per-force economy?~~ → **separate per force** (D69, ADR `0041`): each force has its own ledger, contracts and stock; nothing crosses a force boundary | — | Philippe | **settled 2026-10-25** |
 | ~~Q57~~ | ~~The elevator car: A or B?~~ → **route A** for v1 (D73); route B parked in `comptoir-freight` after a spike | — | Philippe | **settled 2026-10-25** |
+| Q58 | **The counter's entity type**: keep a `container` and **drop the power draw** (Option A), or move to an energy-capable machine to keep power **and** gain a working animation for the elevator (Option B, needs a GUI spike)? | A keeps the plan and loses the anchor; B buys the whole visual identity at the price of one spike. Measured on 2.1.23: containers have no energy model at all | Philippe | lot a |
 
 ---
 

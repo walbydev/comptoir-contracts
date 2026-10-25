@@ -56,3 +56,20 @@ convention changes. "It works in my game" is not evidence.
 `docs/reader/` holds **reader digests written for the requester in his own language** (French), with
 their rendered PDF. They summarise decisions taken elsewhere and are never a source of truth: the ADRs
 and the master framing are. Everything else in this repository stays English.
+
+## One writer at a time
+
+Measured the hard way on 2026-10-25: the framing committed with `git add -A` while a coding agent was
+mid-task, and the commit swept the agent's half-finished `info.json`, `data.lua` and `control.lua` into
+a commit titled `docs: …`. Nothing was lost, but the history now lies about what that commit contains.
+
+Rules, therefore:
+
+- **The framing commits explicit paths** (`git add docs adr specs README.md AGENTS.md`), never `-A`,
+  whenever a coding agent may be working in the same tree.
+- **A coding agent commits only what it touched**, and says so in its report.
+- Before `git add`, look at `git status` and at the author of the last commit. If someone else's work
+  is staged, unstage it rather than adopting it.
+
+One writer, one commit, one message that matches the diff. A history that needs a footnote is a
+history that will be misread.
