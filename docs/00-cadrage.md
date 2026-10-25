@@ -1,7 +1,7 @@
 # Framing — Company contracts (Factorio 2.1 mod set)
 
 > Version: 0.3 · Date: 2026-10-25 · Requested by: Philippe Ryf
-> Status: **blocks 1–6 CLOSED** (2026-10-25) — 65 decisions recorded (4 withdrawn), 38 ADRs, 24
+> Status: **blocks 1–7 CLOSED** (2026-10-25) — 68 decisions recorded (4 withdrawn), 39 ADRs, 24
 > acceptance criteria, **no question left blocking v1**, 15 parked with their features.
 > Repository: `walbydev/comptoir-contracts` (public GitHub, MIT) — created and verified 2026-10-25.
 > No development before tag `v0.1-cadrage`.
@@ -165,6 +165,9 @@ onto what already exists.
 | D61 | Window | **Two tabs** (*Contracts*, *Counter*) in one window, with a **permanent header**: company, character line, and two numbers — `available` and `reserved` | ADR `0037`, `docs/06-interface.md` |
 | D62 | Deadline display | **Digits `M:SS` and a bar**, both: the digits answer "do I have time", the bar answers "am I in trouble". Bar amber under 25 %, red under 10 %; the digits never change colour | ADR `0038` |
 | D63 | Quantity control | A **text field with four presets** (`1`, `10`, `100`, `stack`) sharing one value: a preset writes the field. Clamped to `[1, 2147]`, and clamped again to what the balance allows | ADR `0038` |
+| D64 | Versioning | **0.x** until non-author players have run it and it has survived a game version bump; then `1.0.0`. A patch bump fixes behaviour, a minor bump may change the economy and must ship migrations. **A release is never deleted or rewritten** | ADR `0039` |
+| D65 | Support | **Public GitHub Issues**, linked from the portal, four-field template (mod version, game version ± Space Age, `factorio-current.log`, expected). **No telemetry, no error endpoint** — the mod has no network code at all | ADR `0039` |
+| D66 | Local testing | Development happens in a **separate `--mod-directory`**, in **two copies** (with and without Space Age), never in the player's real mod folder | ADR `0039`, `docs/07-exploitation.md` |
 
 ### 1.2 Success indicators (observable) — **accepted by Philippe on 2026-10-25**
 
@@ -494,7 +497,7 @@ resolved with its feature, not before.
 | ~~Q48~~ | ~~Orbital power: v1 or parked?~~ → **parked as evolution** (D53); the hub produces nothing in v1, it only consumes | — | Philippe | **settled 2026-10-25** |
 | ~~Q49~~ | ~~Interface language?~~ → **English and French** (D51) | — | Philippe | **settled 2026-10-25** |
 | ~~Q50~~ | ~~Family prefix?~~ → **`comptoir`**: mod `comptoir-contracts`, repo renamed, package `comptoir-contracts_<version>.zip` (D50, ADR `0029`) | — | Philippe | **settled 2026-10-25** |
-| Q09 | Exact publishing procedure on `mods.factorio.com` (upload, moderation, delay) | `[to verify]` — no credible release date without it | cadrage (research) | block 7 |
+| ~~Q09~~ | ~~Publishing procedure?~~ → **verified 2026-10-25** from the official wiki: a factorio.com account with a verified purchase, an API key with `ModPortal: Publish Mods`, the archive `comptoir-contracts_<version>.zip` containing that same folder, and the release appears in game in about 5 minutes. No review queue mentioned; the API allows scripting (`init_publish`, `releases/init_upload`) | — | cadrage (research) | **settled 2026-10-25, ADR `0039`** |
 | ~~Q51~~ | ~~Three balancing numbers?~~ → **scale 10, escrow 20 %, endowment 3 000** (D60, ADR `0036`) | — | Philippe | **settled 2026-10-25** |
 | ~~Q52~~ | ~~The three tier thresholds~~ → **dissolved**: a tier is read from the item's oil-chain depth, not from a technology (D57). The counter itself is gated by one early red/green technology (D56) | — | Philippe | **settled 2026-10-25** |
 | ~~Q53~~ | ~~Cadence: immediate or timer?~~ → **immediate**, no timer, therefore no clock (D59, ADR `0035`) | — | Philippe | **settled 2026-10-25** |
