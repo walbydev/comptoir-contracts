@@ -14,7 +14,11 @@
 --                           / 2 x 1.5) + cycle`, `target_payout` read from config/balance.lua only
 --              2026-10-25 — ADR 0048: one payout target per tier (the item's own tier), the deadline
 --                           follows `chain` (whole recipe tree) instead of `seconds` (one recipe)
--- Usages:      required by control.lua; called by the remote interface and by the settle pass
+--              2026-10-25 — b2: `can_accept`, `action_of`, `time_left` and `live` exposed; `accept` and
+--                           `dispatch` now take their verdict from the same gate the window draws with
+--                           (A22), so a button and its action cannot disagree
+-- Usages:      required by control.lua; called by the remote interface, by the settle pass and by
+--              scripts/gui/window.lua (b2)
 -- Notes:       THE POOL IS A GATE, NOT A NUANCE (A18, ADR 0034 §1): an item enters the pool only if
 --              its recipe is enabled for the force AND its tier is within what the force can build. A
 --              contract asking for a processing unit from a player without a refinery is not a hard
@@ -283,6 +287,118 @@ local function flight_of(state, company)
   return nil
 end
 
+-- Everything a dispatch needs, checked without moving anything (A22): the window asks this before it
+-- draws the button, `dispatch` asks it again before it takes the goods. One implementation, so the
+-- button can never be enabled for an action the action itself would refuse.
+-- Returns ok, reason, stock, inventory, hub.
+local function dispatch_readiness(state, storage, force_index, company, contract)
+  if contract == nil then
+    return false, "unknown_contract", 0, nil, nil
+  end
+  if contract.state ~= M.ACCEPTED then
+    return false, "not_accepted", 0, nil, nil
+  end
+  local hub = M.hub_for_company(storage, force_index, company.id)
+  if hub == nil then
+    return false, "no_hub", 0, nil, nil
+  end
+  if elevator.can_send(hub) ~= true then
+    return false, "elevator_" .. elevator.state_of(hub), 0, nil, hub
+  end
+  if flight_of(state, company) ~= nil then
+    return false, "flight_in_progress", 0, nil, hub
+  end
+  local entity = companies.hub_entity(hub)
+  if entity == nil then
+    return false, "no_entity", 0, nil, hub
+  end
+  local inventory = entity.get_inventory(defines.inventory.chest)
+  if inventory == nil then
+    return false, "no_inventory", 0, nil, hub
+  end
+  local stock = inventory.get_item_count(contract.item)
+  if stock < contract.quantity then
+    return false, "not_enough_stock", stock, inventory, hub
+  end
+  return true, nil, stock, inventory, hub
+end
+
+-- May this offer be accepted right now (A22)? The same condition the hold in `accept` needs, said
+-- without moving a credit.
+function M.can_accept(state, contract)
+  if contract == nil then
+    return false, "unknown_contract"
+  end
+  if contract.state ~= M.OFFERED then
+    return false, "not_offered"
+  end
+  if ledger.available(state) < contract.reserve then
+    return false, "escrow_unavailable"
+  end
+  return true, nil
+end
+
+-- The one button of a row (docs/06 §2): what it offers, whether it may be clicked, and how many the
+-- counter holds of what the contract asks for. Returns action ("accept", "dispatch" or nil), ok,
+-- reason, stock.
+function M.action_of(state, storage, force_index, company, contract)
+  if contract == nil then
+    return nil, false, "unknown_contract", 0
+  end
+  if contract.state == M.OFFERED then
+    local ok, reason = M.can_accept(state, contract)
+    return "accept", ok, reason, 0
+  end
+  if contract.state == M.ACCEPTED then
+    local ok, reason, stock = dispatch_readiness(state, storage, force_index, company, contract)
+    return "dispatch", ok, reason, stock
+  end
+  if contract.state == M.IN_FLIGHT then
+    return "dispatch", false, "in_flight", 0
+  end
+  return nil, false, "unknown_state", 0
+end
+
+-- Remaining ticks of a contract and the span they are a fraction of: what the row's digits and bar
+-- draw (docs/06 §2). Read from the contract, never recomputed from the clock of the window.
+function M.time_left(contract, tick)
+  if contract == nil then
+    error("[comptoir] contracts.time_left: contract is required", 2)
+  end
+  local total = math.ceil((contract.deadline_seconds or 0) * 60)
+  local remaining = contract.deadline_tick - tick
+  if remaining < 0 then
+    remaining = 0
+  end
+  return remaining, total
+end
+
+-- The contracts a window shows: the live ones only (offered, accepted, in flight), the actionable
+-- first so a row that can be dispatched is never hidden behind an offer. A contract that ended
+-- (done, expired) is not a row: its reserve has already left the ledger.
+function M.live(company)
+  local out = {}
+  if company == nil or company.contracts == nil then
+    return out
+  end
+  local rank = { [M.ACCEPTED] = 1, [M.OFFERED] = 2, [M.IN_FLIGHT] = 3 }
+  for _, id in ipairs(sorted_keys(company.contracts)) do
+    local contract = company.contracts[id]
+    if rank[contract.state] ~= nil then
+      out[#out + 1] = contract
+    end
+  end
+  table.sort(out, function(left, right)
+    local left_rank = rank[left.state]
+    local right_rank = rank[right.state]
+    if left_rank ~= right_rank then
+      return left_rank < right_rank
+    end
+    return left.id < right.id
+  end)
+  return out
+end
+
 -- Accept an offer: the escrow is held against the cooperative's available credits (D47, ADR 0027) and
 -- the deadline starts now. Nothing else moves — the player has promised, not paid.
 -- Returns ok, reason, contract.
@@ -291,13 +407,13 @@ function M.accept(state, force, company, contract_id, tick)
     error("[comptoir] contracts.accept: state, force and company are required", 2)
   end
   local contract = company.contracts[contract_id]
-  if contract == nil then
-    return false, "unknown_contract", nil
-  end
-  if contract.state ~= M.OFFERED then
-    return false, "not_offered", contract
+  local allowed, reason = M.can_accept(state, contract)
+  if not allowed then
+    return false, reason, contract
   end
 
+  -- `can_accept` is the gate the window draws with (A22); the hold is still wrapped, because a save
+  -- edited between the two reads must be refused, not trusted.
   local ok = pcall(ledger.hold, state, contract.reserve)
   if not ok then
     return false, "escrow_unavailable", contract
@@ -322,35 +438,9 @@ function M.dispatch(state, storage, force_index, company, contract_id, tick)
     error("[comptoir] contracts.dispatch: state, storage and company are required", 2)
   end
   local contract = company.contracts[contract_id]
-  if contract == nil then
-    return false, "unknown_contract", nil
-  end
-  if contract.state ~= M.ACCEPTED then
-    return false, "not_accepted", contract
-  end
-
-  local hub, unit_number = M.hub_for_company(storage, force_index, company.id)
-  if hub == nil then
-    return false, "no_hub", contract
-  end
-  if elevator.can_send(hub) ~= true then
-    return false, "elevator_" .. elevator.state_of(hub), contract
-  end
-  if flight_of(state, company) ~= nil then
-    return false, "flight_in_progress", contract
-  end
-
-  local entity = companies.hub_entity(hub)
-  if entity == nil then
-    return false, "no_entity", contract
-  end
-  local inventory = entity.get_inventory(defines.inventory.chest)
-  if inventory == nil then
-    return false, "no_inventory", contract
-  end
-  local stock = inventory.get_item_count(contract.item)
-  if stock < contract.quantity then
-    return false, "not_enough_stock", contract
+  local ready, reason, _, inventory, hub = dispatch_readiness(state, storage, force_index, company, contract)
+  if not ready then
+    return false, reason, contract
   end
 
   local removed = inventory.remove({ name = contract.item, count = contract.quantity })

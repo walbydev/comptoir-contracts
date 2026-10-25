@@ -13,6 +13,8 @@
 --                           (accept, dispatch, buy, sell, generate), settle pass before every read
 --              2026-10-25 — ADR 0048: `quantity_for_payout` takes the item's tier, `deadline_seconds`
 --                           takes the item's chain (the two formula doors follow the generator)
+--              2026-10-25 — lot b: the four GUI events wired to scripts/gui/window.lua (opened, closed,
+--                           click, text changed); no tick handler was added for the window either
 -- Usages:      executed by the game once per session, before any other control-stage file
 -- Notes:       `require` is only legal while control.lua files are being parsed — never inside a
 --              handler (measured on 2.1.23: "Require can't be used outside of control.lua parsing").
@@ -34,6 +36,7 @@ local companies = require("__comptoir-contracts__/scripts/companies")
 local contracts = require("__comptoir-contracts__/scripts/contracts")
 local counter = require("__comptoir-contracts__/scripts/counter")
 local ledger = require("__comptoir-contracts__/scripts/ledger")
+local window = require("__comptoir-contracts__/scripts/gui/window")
 local balance = require("__comptoir-contracts__/config/balance")
 
 local COUNTER = "comptoir-counter"
@@ -132,6 +135,25 @@ script.on_event(defines.events.on_robot_built_entity, on_built)
 script.on_event(defines.events.script_raised_built, on_built)
 script.on_event(defines.events.on_entity_died, on_destroyed)
 script.on_event(defines.events.script_raised_destroy, on_destroyed)
+
+-- The window (lot b). Four events, no tick: the frame is drawn when it opens, on a tab change, on a
+-- preset and after every action, never on a clock (docs/06 §1).
+-- Opening the counter replaces the vanilla container frame: `player.opened = nil` inside
+-- on_gui_opened, then a frame in `player.gui.screen` (measured 2026-10-25, ADR 0050, and the working
+-- probe in `spike/gui-probe/`). The close caused by that assignment bounces back as on_gui_closed in
+-- the same tick and is ignored by `window.on_closed`.
+script.on_event(defines.events.on_gui_opened, function(event)
+  window.on_opened(storage, event)
+end)
+script.on_event(defines.events.on_gui_closed, function(event)
+  window.on_closed(storage, event)
+end)
+script.on_event(defines.events.on_gui_click, function(event)
+  window.on_click(storage, event)
+end)
+script.on_event(defines.events.on_gui_text_changed, function(event)
+  window.on_text_changed(storage, event)
+end)
 
 script.on_init(function()
   migrate.init(storage)

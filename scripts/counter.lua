@@ -8,7 +8,9 @@
 -- Author:      Philippe Ryf
 -- Created:     2026-10-25
 -- Revisions:   2026-10-25 — initial: buy at price, sell at credits, quote, clamped quantities (a10)
--- Usages:      required by control.lua; called by the remote interface and, later, by the shop tab
+--              2026-10-25 — b3: `affordable` and `sellable` exposed; `buy` and `sell` take their
+--                           ceiling from them, so the shop tab's gates are the trade's own rules (A22)
+-- Usages:      required by control.lua and by scripts/gui/window.lua; called by the remote interface
 -- Notes:       THE SHOP ALWAYS BUYS (D48, ADR 0028 §"the shop always buys"): with no contract active,
 --              with nothing in reserve, at any time of day. It has no stock of its own and no price
 --              condition — selling is the way back from a cooperative at zero, which is why the
@@ -77,6 +79,27 @@ local function clamp_count(count, ceiling)
   return count
 end
 
+-- What the cooperative can afford of this item with the credits it has available right now (A22, A24):
+-- the number the window clamps the quantity field to and the gate of the BUY button. One formula, used
+-- by `buy` below and by the window, so the button and the trade can never disagree.
+function M.affordable(state, item)
+  local entry = entry_of(item)
+  return math.floor(ledger.available(state) / entry.price)
+end
+
+-- What a sale can move: what the counter holds, and what the company can pay for (A22). The ceiling of
+-- the SELL button. Returns ceiling, stock.
+function M.sellable(company, entity, item)
+  local entry = entry_of(item)
+  local inventory = M.inventory_of(entity)
+  if inventory == nil then
+    return 0, 0
+  end
+  local stock = inventory.get_item_count(item)
+  local payable = math.floor(company.balance / entry.credits)
+  return math.min(stock, payable), stock
+end
+
 -- The cooperative buys `count` units: the money goes to the company, the goods land in the counter.
 -- Returns ok, reason, traded_count, total_credits.
 function M.buy(state, company, entity, item, count)
@@ -89,7 +112,7 @@ function M.buy(state, company, entity, item, count)
     return false, "no_inventory", 0, 0
   end
 
-  local affordable = math.floor(ledger.available(state) / entry.price)
+  local affordable = M.affordable(state, item)
   local wanted, reason = clamp_count(count, affordable)
   if wanted == nil then
     if reason == "nothing_to_trade" then
@@ -127,8 +150,7 @@ function M.sell(state, company, entity, item, count)
   end
 
   local stock = inventory.get_item_count(item)
-  local payable = math.floor(company.balance / entry.credits)
-  local ceiling = math.min(stock, payable)
+  local ceiling = M.sellable(company, entity, item)
   local wanted, reason = clamp_count(count, ceiling)
   if wanted == nil then
     if reason == "nothing_to_trade" then
