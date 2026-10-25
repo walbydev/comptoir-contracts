@@ -29,6 +29,7 @@ local balance = require("__comptoir-contracts__/config/balance")
 local catalogue = require("__comptoir-contracts__/config/companies")
 local prices = require("__comptoir-contracts__/data/prices")
 local ledger = require("__comptoir-contracts__/scripts/ledger")
+local elevator = require("__comptoir-contracts__/scripts/elevator")
 
 local M = {}
 
@@ -192,6 +193,24 @@ function M.unlocked_tier(force)
   return tier
 end
 
+-- The solvency profile of a world, read from the startup setting exactly once (ADR 0015 §4): the
+-- value is copied into the force's record when the economy is born, and never read again. A player
+-- who reloads an old save with a different setting keeps the world it was created with.
+local function solvency_profile()
+  local setting = settings.startup["comptoir-solvency"]
+  if setting == nil then
+    error("[comptoir] companies: the startup setting `comptoir-solvency` is missing — settings.lua not loaded?", 3)
+  end
+  local profile = setting.value
+  if balance.solvency.profiles[profile] == nil then
+    error(
+      "[comptoir] companies: `comptoir-solvency` is " .. tostring(profile) .. ", which config/balance.lua does not know",
+      3
+    )
+  end
+  return profile, balance.solvency.profiles[profile]
+end
+
 -- The economy record of a force, created on first use with the endowment (D28).
 function M.force_state(storage, force_index)
   if storage.forces == nil then
@@ -199,11 +218,15 @@ function M.force_state(storage, force_index)
   end
   local state = storage.forces[force_index]
   if state == nil then
+    local profile, credit_line = solvency_profile()
     state = ledger.new_force(balance.economy.endowment)
+    state.solvency = profile
+    state.credit_line = credit_line
     storage.forces[force_index] = state
     log(
       "[comptoir] economy created for force " .. force_index .. ": endowment " .. balance.economy.endowment
         .. " credits issued to the cooperative, federation at " .. state.federation
+        .. ", solvency \"" .. profile .. "\" (credit line " .. credit_line .. " per company)"
     )
   end
   return state
@@ -278,7 +301,22 @@ function M.create_for_hub(storage, force, entity, tick)
 
   ledger.register_company(state, company)
   state.next_company_id = id + 1
-  storage.hubs[unit_number] = { force_index = force.index, company_id = id }
+
+  -- The credit line (ADR 0015 §3): the company is born able to pay a payout, drawn on the federation.
+  -- `poor` sets the line to zero and the company must earn before it spends; `rich` is the default.
+  if state.credit_line ~= nil and state.credit_line > 0 then
+    ledger.transfer(state, ledger.FEDERATION, ledger.company(id), state.credit_line)
+  end
+
+  -- The hub record keeps everything needed to find the entity again after a reload: the counter's
+  -- position and surface are stable, and its elevator is two numbers (scripts/elevator.lua).
+  storage.hubs[unit_number] = {
+    force_index = force.index,
+    company_id = id,
+    surface_index = entity.surface.index,
+    position = { x = entity.position.x, y = entity.position.y },
+    elevator = elevator.new(tick),
+  }
   ledger.assert_conservation(state, "create_for_hub " .. unit_number)
 
   log(
@@ -286,6 +324,92 @@ function M.create_for_hub(storage, force, entity, tick)
       .. ") created for counter " .. unit_number .. " on force " .. force.index .. " at tick " .. tick
   )
   return company, true
+end
+
+-- The entity behind a hub record, or nil when the counter is gone (deconstructed between two reads,
+-- or a save whose chunk was cut). Every caller must handle nil: a hub outlives its entity in
+-- `storage` until the destroy event is seen.
+function M.hub_entity(hub)
+  if hub == nil or hub.surface_index == nil or hub.position == nil then
+    return nil
+  end
+  local surface = game.get_surface(hub.surface_index)
+  if surface == nil then
+    return nil
+  end
+  return surface.find_entity("comptoir-counter", hub.position)
+end
+
+function M.hub_by_unit(storage, unit_number)
+  return (storage.hubs or {})[unit_number]
+end
+
+-- Minimum spacing between two counters of the same force and surface (A9, D41).
+-- Returns allowed, distance_to_nearest, unit_number_of_nearest. `distance` is nil when this would be
+-- the first counter, which is not a refusal.
+function M.distance_allows(storage, entity)
+  if entity == nil or entity.valid == false then
+    error("[comptoir] companies.distance_allows: no valid entity", 2)
+  end
+  local min_distance = balance.counter.min_distance
+  local position = entity.position
+  local best, best_unit = nil, nil
+  for _, unit_number in ipairs(sorted_keys(storage.hubs or {})) do
+    local hub = storage.hubs[unit_number]
+    if hub.force_index == entity.force.index and hub.surface_index == entity.surface.index and hub.position ~= nil then
+      local dx = hub.position.x - position.x
+      local dy = hub.position.y - position.y
+      local distance = math.sqrt(dx * dx + dy * dy)
+      if best == nil or distance < best then
+        best, best_unit = distance, unit_number
+      end
+    end
+  end
+  if best ~= nil and best < min_distance then
+    return false, best, best_unit
+  end
+  return true, best, best_unit
+end
+
+-- A deterministic text dump of one force's records, for the harness door (`storage_dump`). Sorted
+-- keys, no formatting: the point is that two dumps of the same state are the same string, and that a
+-- dump of a force that did nothing is unchanged (A26, A28). Read-only, and it serialises nothing but
+-- what the mod itself stores — no game object, no player.
+local function dump_value(value, out)
+  local kind = type(value)
+  if kind == "number" or kind == "string" or kind == "boolean" then
+    out[#out + 1] = tostring(value)
+  elseif kind == "table" then
+    out[#out + 1] = "{"
+    for _, key in ipairs(sorted_keys(value)) do
+      out[#out + 1] = tostring(key) .. "="
+      dump_value(value[key], out)
+      out[#out + 1] = ","
+    end
+    out[#out + 1] = "}"
+  else
+    out[#out + 1] = "<" .. kind .. ">"
+  end
+end
+
+function M.dump_storage(storage, force_index)
+  local out = { "version=" .. tostring(storage.version), ";" }
+  local state = storage.forces and storage.forces[force_index]
+  if state == nil then
+    out[#out + 1] = "no-economy"
+  else
+    dump_value(state, out)
+  end
+  out[#out + 1] = ";hubs="
+  local hubs = {}
+  for _, unit_number in ipairs(sorted_keys(storage.hubs or {})) do
+    local hub = storage.hubs[unit_number]
+    if hub.force_index == force_index then
+      hubs[#hubs + 1] = hub
+    end
+  end
+  dump_value(hubs, out)
+  return table.concat(out)
 end
 
 -- Read-only view for the remote interface (design.md §5): plain numbers and strings only, so the
@@ -303,6 +427,9 @@ function M.snapshot(storage, force_index)
     available = 0,
     total = 0,
     supply = 0,
+    solvency = nil,
+    credit_line = 0,
+    sandbox = false,
     companies = {},
     hubs = {},
   }
@@ -317,6 +444,9 @@ function M.snapshot(storage, force_index)
     out.available = ledger.available(state)
     out.total = ledger.total(state)
     out.supply = state.supply
+    out.solvency = state.solvency
+    out.credit_line = state.credit_line or 0
+    out.sandbox = state.solvency == "unlimited"
 
     for _, id in ipairs(sorted_keys(state.companies)) do
       local company = state.companies[id]
@@ -330,9 +460,13 @@ function M.snapshot(storage, force_index)
           quantity = contract.quantity,
           payout = contract.payout,
           reserve = contract.reserve,
+          deadline_seconds = contract.deadline_seconds,
           deadline_tick = contract.deadline_tick,
           state = contract.state,
           settled = contract.settled,
+          accepted_tick = contract.accepted_tick,
+          dispatched_tick = contract.dispatched_tick,
+          settled_tick = contract.settled_tick,
         }
       end
       local weights = {}
@@ -355,11 +489,19 @@ function M.snapshot(storage, force_index)
 
   for _, unit_number in ipairs(sorted_keys(storage.hubs or {})) do
     local hub = storage.hubs[unit_number]
-    out.hubs[#out.hubs + 1] = {
-      unit_number = unit_number,
-      force_index = hub.force_index,
-      company_id = hub.company_id,
-    }
+    if hub.force_index == force_index then
+      out.hubs[#out.hubs + 1] = {
+        unit_number = unit_number,
+        force_index = hub.force_index,
+        company_id = hub.company_id,
+        surface_index = hub.surface_index,
+        position = hub.position and { x = hub.position.x, y = hub.position.y } or nil,
+        elevator_state = hub.elevator and hub.elevator.state or nil,
+        elevator_phase_ends_tick = hub.elevator and hub.elevator.phase_ends_tick or nil,
+        elevator_sent_tick = hub.elevator and hub.elevator.sent_tick or nil,
+        elevator_return_tick = hub.elevator and hub.elevator.return_tick or nil,
+      }
+    end
   end
 
   return out

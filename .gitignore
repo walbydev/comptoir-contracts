@@ -14,3 +14,6 @@ __pycache__/
 !.env.example
 *_token.txt
 *API_KEY*
+
+# artefacts du banc de test (mods copiés, sauvegardes jetables, rapports)
+out/

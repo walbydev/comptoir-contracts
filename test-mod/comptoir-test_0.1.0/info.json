@@ -1,0 +1,11 @@
+{
+  "name": "comptoir-test",
+  "version": "0.1.0",
+  "title": "Comptoir contracts - test bench",
+  "author": "Philippe Ryf",
+  "contact": "philippe@walby.dev",
+  "homepage": "https://walby.dev",
+  "description": "Test bench for comptoir-contracts: one scenario per acceptance criterion, driven through the mod's remote interface only. Not a gameplay mod.",
+  "factorio_version": "2.1",
+  "dependencies": ["base >= 2.1", "comptoir-contracts >= 0.1.0"]
+}
