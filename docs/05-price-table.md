@@ -76,15 +76,15 @@ per-tier multiplier, which is what we wanted.
 - **The cooperative's income is 15 % above raw cost** on a delivered contract. That is thin by
   design: contracts pay for *transformation*, and the shop is where credits leave the cooperative.
 
-## 4. The three numbers that remain to be arbitrated
+## 4. The three numbers — arbitrated 2026-10-25
 
-| # | Number | Proposed | Why |
+| # | Number | Adopted | Why |
 |---|---|---|---|
 | 1 | **Scale** (credits per raw unit) | **10** | keeps every item integral and the smallest one at 5 credits |
 | 2 | **Escrow rate** (D47) | **20 %** of the payout | one failed contract out of five wipes the margin; below 10 % it stops being a deterrent |
-| 3 | **Initial endowment** (D28) | **one tier-1 contract of 200 plates + 20 %** | enough to accept a first contract and buy a first stack of cable: `200 × 12 × 1.2 ≈ 2 880`, so **3 000 credits** |
+| 3 | **Initial endowment** (D28) | **3 000** | covers a first contract's reserve (500) six times over and still buys a stack: `208 × 12 × 1.2 ≈ 3 000` |
 
-Numbers 1 and 2 are design taste. Number 3 is arithmetic, and it moves with them.
+Numbers 1 and 3 are arithmetic. Number 2 is the only judgement in the trio.
 
 ## 6. What gates a contract — measured, not chosen
 
@@ -105,9 +105,14 @@ so the loop exists before the refinery does.
 Tier 3 holds a single item today. That is the data, not a mistake: only the processing unit sits three
 oil steps deep. The catalogue grows by adding items, and the tier follows automatically.
 
-## 7. What is still open at the end of block 5
+## 7. Closed at the end of block 5
 
-- The **cadence** of refill (Q53): immediately when a slot frees, or on a timer.
-- The exact **quantities per contract** — a band derived from a target payout, to be fixed with the
-  endowment.
-- Whether the three numbers of §4 are confirmed.
+All three numbers are arbitrated — **scale 10, escrow 20 %, endowment 3 000** (ADR 0036) — and the
+refill is immediate, with no timer (ADR 0035). What a first contract looks like with these numbers:
+
+```
+208 iron plates    pays 2 496    reserves 500    deadline 5 min 33 at two furnaces
+```
+
+That is the whole loop in one line: cheap to accept, quick to deliver, and worth roughly a third of the
+endowment. The economy has no free parameter left except the shapes of the UI, which is block 6.

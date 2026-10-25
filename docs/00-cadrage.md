@@ -1,7 +1,7 @@
 # Framing — Company contracts (Factorio 2.1 mod set)
 
 > Version: 0.3 · Date: 2026-10-25 · Requested by: Philippe Ryf
-> Status: **blocks 1–5 written** (2026-10-25) — 60 decisions recorded (4 withdrawn), 34 ADRs, 18
+> Status: **blocks 1–5 CLOSED** (2026-10-25) — 62 decisions recorded (4 withdrawn), 36 ADRs, 18
 > acceptance criteria, **no question left blocking v1**, 15 parked with their features.
 > Repository: `walbydev/comptoir-contracts` (public GitHub, MIT) — created and verified 2026-10-25.
 > No development before tag `v0.1-cadrage`.
@@ -160,6 +160,8 @@ onto what already exists.
 | D56 | Counter placement | The counter is **built before oil**: its recipe contains **no oil-derived item**, one technology with red and green science, about 600 raw units | ADR `0033` |
 | D57 | Tiers | A tier is **not a padlock**: it is read from the item's **oil-chain depth** (no fluid → 1, one oil step → 2, a chain → 3), so the "three tiers" of `0025` become a commercial band. The real gate is the player's research | ADR `0034` |
 | D58 | Contract generation | Pool = catalogue ∩ research unlocked ∩ tier; weighted pick by the company's character; quantity from a payout band; deadline = `max(10 min, qty × machine_seconds / 2)`; **seeded RNG per company**, never `math.random` | ADR `0034` |
+| D59 | Refill | **Immediate**: a slot refills as soon as its contract is completed or expires. No timer, no clock, therefore no `on_tick` | ADR `0035` |
+| D60 | Balancing numbers | Scale **10** credits per raw unit · escrow **20 %** of the payout · endowment **3 000** credits issued once to the cooperative | ADR `0036` |
 
 ### 1.2 Success indicators (observable) — **accepted by Philippe on 2026-10-25**
 
@@ -484,9 +486,9 @@ resolved with its feature, not before.
 | ~~Q49~~ | ~~Interface language?~~ → **English and French** (D51) | — | Philippe | **settled 2026-10-25** |
 | ~~Q50~~ | ~~Family prefix?~~ → **`comptoir`**: mod `comptoir-contracts`, repo renamed, package `comptoir-contracts_<version>.zip` (D50, ADR `0029`) | — | Philippe | **settled 2026-10-25** |
 | Q09 | Exact publishing procedure on `mods.factorio.com` (upload, moderation, delay) | `[to verify]` — no credible release date without it | cadrage (research) | block 7 |
-| Q51 | **Three balancing numbers** to arbitrate (block 5): the scale (credits per raw unit, proposed 10), the escrow rate (proposed 20 %), the initial endowment (proposed 3 000). The table itself is measured, not chosen | They set the feel of the whole economy and the size of every number the player reads | Philippe | block 5 |
+| ~~Q51~~ | ~~Three balancing numbers?~~ → **scale 10, escrow 20 %, endowment 3 000** (D60, ADR `0036`) | — | Philippe | **settled 2026-10-25** |
 | ~~Q52~~ | ~~The three tier thresholds~~ → **dissolved**: a tier is read from the item's oil-chain depth, not from a technology (D57). The counter itself is gated by one early red/green technology (D56) | — | Philippe | **settled 2026-10-25** |
-| Q53 | **Cadence**: does an empty slot refill as soon as a contract is completed or expired, or does the catalogue refresh on a timer? | Immediate is simpler and needs no clock; a timer creates a reason to come back, and a reason to wait | Philippe | block 5 |
+| ~~Q53~~ | ~~Cadence: immediate or timer?~~ → **immediate**, no timer, therefore no clock (D59, ADR `0035`) | — | Philippe | **settled 2026-10-25** |
 
 ---
 
