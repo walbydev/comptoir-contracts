@@ -21,7 +21,7 @@ comptoir-contracts/
 │   ├── entrants/                  frozen input (the requester's brief, original language, never edited)
 │   └── spikes/                    dated measurements (hub-sites, and the smoke test result)
 │
-├── adr/                           0001…0044, append-only, never rewritten
+├── adr/                           0001…0047, append-only, never rewritten
 ├── tools/
 │   └── cost_table.py              the instrument: dump → raw cost → price table
 ├── spike/
@@ -43,10 +43,13 @@ comptoir-contracts_0.1.0/
 ├── info.json                      name, version, factorio_version "2.1", no hard dependency on Space Age
 ├── data.lua                       requires the prototype files
 ├── data/
-│   ├── counter.lua                the counter: container clone, min-distance, power draw
+│   ├── counter.lua                the counter: container clone, min-distance, **no energy field** (D75)
 │   ├── elevator.lua               the shaft and the car's three states
 │   ├── item.lua                   the mod's own items, if any (v1: none expected)
 │   └── technology.lua             the early red/green technology that unlocks the counter
+├── config/
+│   ├── balance.lua                the three numbers: 2 500 payout target, 20 % escrow, 3 000 endowment
+│   └── companies.lua              company names and characters (weights), data only, no logic
 ├── control.lua                    event wiring only; no logic of its own
 ├── scripts/
 │   ├── ledger.lua                 accounts, hold/release/forfeit, conservation assert

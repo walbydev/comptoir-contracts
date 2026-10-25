@@ -39,7 +39,7 @@ storage = {
             [1] = {
               item = "iron-plate", quantity = 208,
               payout = 2496, reserve = 500,
-              deadline_tick = 36000,
+              deadline_tick = 37140,  -- 10:19, the 2-minute elevator cycle included (ADR 0047)
               state = "offered", -- offered | accepted | in_flight | done | expired
               settled = false,
             },

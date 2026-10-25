@@ -73,3 +73,10 @@ Rules, therefore:
 
 One writer, one commit, one message that matches the diff. A history that needs a footnote is a
 history that will be misread.
+
+## Branches
+
+Lot (a) went straight to `main` because the repository had a single writer and no CI. **From
+lot (b) on, code lands on `feature/<lot>` and is merged after review** — the framing reviews, the coding
+agent does not merge its own work. History is never rewritten to move commits that already exist on
+`main`: a straight-line history with an honest message beats a tidy one that was silently rearranged.

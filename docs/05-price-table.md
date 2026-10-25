@@ -108,13 +108,27 @@ oil steps deep. The catalogue grows by adding items, and the tier follows automa
 ## 7. Closed at the end of block 5
 
 All three numbers are arbitrated — **scale 10, escrow 20 %, endowment 3 000** (ADR 0036) — and the
-refill is immediate, with no timer (ADR 0035). What a first contract looks like with these numbers:
+refill is immediate, with no timer (ADR 0035). The quantity of a contract is not chosen: it is derived
+from a **payout target of 2 500 credits** (ADR 0047), floored at **one unit**, so a rare item makes a
+small contract worth the same money as a big one.
 
 ```
-208 iron plates    pays 2 496    reserves 500    deadline 7 min 33
+qty      = clamp(round(2500 / payout_per_unit), 1, 500)
+deadline = max(4 min, qty × machine_seconds / 2 × 1.5) + 2 min cycle
 ```
 
-That is the whole loop in one line: cheap to accept, quick to deliver, and worth roughly a third of the
-endowment. The 7 min 33 is **5 min 33 of production plus the 2-minute elevator round trip** (ADR 0043) —
-the cycle is part of every deadline, and forgetting it would generate contracts that expire in the air.
-The economy has no free parameter left except the shapes of the UI, which is block 6.
+| Contract | Units | Pays | Reserves | Deadline |
+|---|---|---|---|---|
+| copper cable | 417 | 2 502 | 501 | 6:00 |
+| iron plate | 208 | 2 496 | 500 | 10:19 |
+| electronic circuit | 86 | 2 494 | 499 | 6:00 |
+| steel plate | 43 | 2 494 | 499 | 10:36 |
+| advanced circuit | 4 | 2 416 | 484 | 6:00 |
+| processing unit | **1** | 1 975 | 395 | 6:00 |
+
+Read the steel row: 43 plates are slow to smelt, so the contract gives 10:36; read the processing-unit
+row: one unit, 395 of reserve. Same money, different work — that is the whole design in two lines.
+
+**Correction of 2026-10-25**: this table replaces an example that said *7 min 33 for 208 iron plates*.
+The formula gives `max(600, 208 × 3.2 / 2) + 120 = 720 s`, so the floor was swallowing the production
+term and every contract had the same deadline (ADR 0047).

@@ -159,7 +159,7 @@ onto what already exists.
 | D55 | v1 catalogue | The counter sells **materials only, no buildings**: 16 items from copper cable to processing unit, priced from the game's recipes (`docs/05-price-table.md`) | ADR `0032`, `tools/cost_table.py` |
 | D56 | Counter placement | The counter is **built before oil**: its recipe contains **no oil-derived item**, one technology with red and green science, about 600 raw units | ADR `0033` |
 | D57 | Tiers | A tier is **not a padlock**: it is read from the item's **oil-chain depth** (no fluid → 1, one oil step → 2, a chain → 3), so the "three tiers" of `0025` become a commercial band. The real gate is the player's research | ADR `0034` |
-| D58 | Contract generation | Pool = catalogue ∩ research unlocked ∩ tier; weighted pick by the company's character; quantity from a payout band; deadline = `max(10 min, qty × machine_seconds / 2) + elevator_cycle`; **seeded RNG per company**, never `math.random` | ADR `0034`, `0043` |
+| D58 | Contract generation | Pool = catalogue ∩ research unlocked ∩ tier; weighted pick by the company's character; **quantity derived from a 2 500 payout target, floor 1 unit** (D76); deadline = `max(4 min, qty × machine_seconds / 2 × 1.5) + elevator_cycle`; **seeded RNG per company**, never `math.random` | ADR `0034`, `0043`, `0047` |
 | D59 | Refill | **Immediate**: a slot refills as soon as its contract is completed or expires. No timer, no clock, therefore no `on_tick` | ADR `0035` |
 | D60 | Balancing numbers | Scale **10** credits per raw unit · escrow **20 %** of the payout · endowment **3 000** credits issued once to the cooperative | ADR `0036` |
 | D61 | Window | **Two tabs** (*Contracts*, *Counter*) in one window, with a **permanent header**: company, character line, and two numbers — `available` and `reserved` | ADR `0037`, `docs/06-interface.md` |
@@ -177,6 +177,7 @@ onto what already exists.
 | D73 | Elevator car | **Route A**: the car is a **state** with three graphics, no per-tick work, no `rendering` API. Route B (a sprite that physically travels, with a bounded `on_tick`) is parked in `comptoir-freight`, after a spike | ADR `0044` |
 | D74 | Public API | The shipped mod exposes **one remote interface** (`snapshot`, `act`, `api_version`) — a separate mod cannot read another mod's `storage`, so without it no automated harness exists. It grants nothing the console does not already grant. **Corrects the wording of D70/ADR `0042`**: the mod ships no *test assertions*, but it does ship this API | ADR `0042` (corrected), `specs/001-v1/design.md` §5 |
 | D75 | No power | The counter **draws nothing**: no pole, no fuel, no closed state. The spaceport feeds it, from orbit. The only placement rule left is the **minimum distance** between two counters; the anchor is now the recipe's cost alone | ADR `0046` |
+| D76 | Money target | A contract targets **2 500 credits**, not a tonnage: `qty = clamp(round(2500 / payout_per_unit), 1, 500)`. The floor is **one unit**, so a processing-unit contract pays 1 975 with a 395 reserve instead of being unaffordable | ADR `0047` |
 
 ### 1.2 Success indicators (observable) — **accepted by Philippe on 2026-10-25**
 
