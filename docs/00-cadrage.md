@@ -1,7 +1,7 @@
 # Framing — Company contracts (Factorio 2.1 mod set)
 
 > Version: 0.3 · Date: 2026-10-25 · Requested by: Philippe Ryf
-> Status: **blocks 1–3 CLOSED** (2026-10-25) — 50 decisions recorded (4 withdrawn), 28 ADRs, 14
+> Status: **blocks 1–3 CLOSED, block 4 in progress** (2026-10-25) — 52 decisions recorded (4 withdrawn), 30 ADRs, 14
 > acceptance criteria, **no question left blocking v1**, 15 parked with their features.
 > Repository: `walbydev/factorio-contrats` (public GitHub, MIT) — created and verified 2026-10-25.
 > No development before tag `v0.1-cadrage`.
@@ -150,6 +150,8 @@ onto what already exists.
 | D46 | Price band | `cost < payout < price (= cost × 1.5)` governs **every** number in the single table | D30, `0006` |
 | D47 | Escrow amount | `reserved = ceil(payout × rate)`, **one rate for the whole set**, in the price table. A contract **cannot be accepted** if the cooperative's free balance does not cover it | ADR `0028` |
 | D48 | Shop safety valve | The shop **always buys**, contract or not: it is the only way back from a cooperative at zero, and therefore the safety valve of the economy | ADR `0028` |
+| D49 | Hub power | The hub has a **small electric draw**: it must be connected to a grid, which is a placement constraint for free and a closed counter when unpowered | ADR `0030` |
+| D50 | Naming | **`<family>-<feature>`**, lowercase, hyphenated; the family is chosen once, before the first release, and never after. Candidates: `charter`, `concord`, `outpost`; recommendation `charter` | ADR `0029` |
 
 ### 1.2 Success indicators (observable) — **accepted by Philippe on 2026-10-25**
 
@@ -290,7 +292,8 @@ API for third-party mods beyond the add-on interface, final art.
 
 ## 4. Technical constraints and reuse
 
-`[TO FILL — block 4]` See §0.2 for the verified test chain. Already certain:
+**Block 4 — filled 2026-10-25.** The v1 technical shape is §4.2; what the set looked like before the
+cut is kept as §4.3. Already certain:
 
 - Language: **Lua 5.2** (Factorio API), no .NET, no PostgreSQL — the preferred stack does not apply.
 - Persistent state: `storage` (the 2.0 rename of `global`) — one `storage` table **per mod**, which is
@@ -311,6 +314,35 @@ API for third-party mods beyond the add-on interface, final art.
   configuration. The hub's own prototypes carry the behaviour in both cases. No existing prototype
   may be overwritten.
 - **`luac`**: build Lua 5.2 locally, or rely on headless load failures (§0.2).
+
+### 4.2 The v1 technical shape — one mod, no per-tick work
+
+| Piece | Choice | Why |
+|---|---|---|
+| **Hub entity** | a **`container`** cloned from a large chest, with its own `inventory_size` | inserters and logistics robots work natively, with no script; the vanilla inventory is exactly what `0016` asks for |
+| **Hub GUI** | `on_gui_opened` opens **our own frame**; the vanilla chest GUI is not used | one window, one style, and no dependency on the container layout |
+| **Control flow** | **no `on_tick`**. Everything hangs on events: `on_built_entity`, `on_gui_opened`, `on_gui_click`, `on_gui_closed`, `on_entity_died`, `on_player_mined_entity` | a per-tick loop over hubs is the classic way to make a mod expensive; there is nothing here that needs a clock |
+| **Deadlines** | the deadline is a **number of ticks** stored with the contract; expiry is **evaluated on read** and applied once, with a flag | deterministic, zero cost, and correct after a save/load |
+| **State** | one `storage` table: `storage.companies`, `storage.hubs[unit_number]`, `storage.ledger {cooperative, federation}`, `storage.contracts` | the 2.0 rename of `global`; one owned table, no cross-mod access in v1 |
+| **Randomness** | **never `math.random`**. A seeded generator per company, stored in `storage`, advanced only on generation | a shared random stream is how a mod desyncs in multiplayer |
+| **Money** | integers only, `ceil` on the escrow (D47), explicit rounding everywhere | D7 and D47 |
+| **Price table** | a plain Lua file (`scripts/prices.lua`) `require`d by `control.lua`, one table, versioned with the mod | readable, diffable, and no settings dance; it is a *design* artefact, not a preference |
+| **Locale** | `locale/en/` first; `locale/fr/` only if the requester asks (Q49) | the portal audience is international |
+| **Power** | an `electric` energy source with a low draw (`0030`) | a hub must be connected to a grid: a placement constraint for free |
+| **Space Age** | `"dependencies": ["base", "? space-age"]`; nothing else | D5 — the mod loads in both configurations and tests both |
+
+**What is deliberately absent in v1**: no `remote.add_interface` (nothing to talk to), no add-on hooks,
+no `on_tick`, no custom `tile`, no `resource` prototype, no second GUI window.
+
+### 4.3 What the four-mod set needed, kept for when it returns
+
+The three bullets above about cross-mod communication (`remote.add_interface`, `api_version`, named
+events), cross-mod GUI (a mod cannot edit another mod's window, and no widget may be owned by two mods)
+and dependency direction (`add-on >= core`, never the reverse) exist **only** for the multi-mod design
+of `0013`. v1 has no add-on, so none of them applies — they are kept here because the evolution will
+need them, and because rediscovering them costs a day.
+
+
 
 ## 5. Data
 
@@ -436,6 +468,9 @@ resolved with its feature, not before.
 | ~~Q46~~ | ~~How much is reserved?~~ → **a percentage of the payout**, one rate for the whole set, `ceil`, in the price table (D47) | — | Philippe | **settled 2026-10-25, ADR 0028** |
 | ~~Q47~~ | ~~Coverage?~~ → **required**: a contract cannot be accepted if the cooperative's free balance does not cover the reservation; the shop buying goods is the way back from zero (D48) | — | Philippe | **settled 2026-10-25, ADR 0028** |
 | Q32 | Moving credits between **two companies**: item conversion only, or a transfer between counters with a fee? | Free transfers: no reason to hold money anywhere; for-pay only: tedious for a legitimate player | Philippe | block 4 |
+| Q48 | The **orbital power** evolution (ship solar panels up, power comes back): in **v1** or parked? It adds a second flow direction, therefore a second loop | In v1 it doubles the GUI and the failure modes of a loop that was cut to one | Philippe | block 4 |
+| Q49 | Interface language: **English only**, or English **and** French (`locale/fr/`)? | French only: the portal audience cannot read it. Both: two files to keep in sync for every string | Philippe | block 4 |
+| Q50 | The **family prefix** (D50): `charter`, `concord` or `outpost`? | It is the only decision that cannot be changed after the first release | Philippe | block 4 |
 | Q09 | Exact publishing procedure on `mods.factorio.com` (upload, moderation, delay) | `[to verify]` — no credible release date without it | cadrage (research) | block 7 |
 
 ---
