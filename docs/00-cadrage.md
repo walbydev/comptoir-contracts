@@ -1,7 +1,7 @@
 # Framing — Company contracts (Factorio 2.1 mod set)
 
 > Version: 0.3 · Date: 2026-10-25 · Requested by: Philippe Ryf
-> Status: **blocks 1–3 consolidated** — 37 decisions recorded, 19 questions still open.
+> Status: **blocks 1–3 consolidated** — 38 decisions recorded, 19 questions still open.
 > Repository: `walbydev/factorio-contrats` (public GitHub, MIT) — created and verified 2026-10-25.
 > No development before tag `v0.1-cadrage`.
 
@@ -136,6 +136,7 @@ onto what already exists.
 | D33 | Bankruptcy | A company in default **loses every contract and issues none**; the hub is **resold to another company**; the debt stays with the dead company, so the loss lands on the federation | ADR `0018` |
 | D34 | Printing | The research raises **one step up the dial**, for the company that holds it, permanently. One research, one step | ADR `0017` |
 | D35 | Contract kinds | Every contract carries a `kind`: **one-off** (once, with a deadline), **recurring at a fixed price**, **recurring at a decaying price** (`payout_decay`, distinct from the conversion rate of D9). One structure, one generator, one GUI | ADR `0019` |
+| D36 | Decay | **Logarithmic**, anchored on the tier, floored at a **minimum price per delivered item** read from the price table; the contract stops being offered at its floor, and the number of occurrences is **derived**, never configured | ADR `0020` |
 
 ### 1.2 Success indicators (observable) — **accepted by Philippe on 2026-10-25**
 
@@ -257,7 +258,7 @@ API for third-party mods beyond the add-on interface, final art.
 | A9 | Two hubs on the same surface are refused below the minimum distance, **with a message and without losing the item**; two hubs on the same surface offer **different** contract sets |
 | A10 | The conservation invariant is asserted in `poor` and `rich`; in `unlimited` the game **says** it is a sandbox and the harness asserts only that nothing crashes |
 | A11 | A company driven to default **loses its contracts, issues none, and is resold**; the resale hands the building to a different company and the dead company's debt stays with it (headless assertion) |
-| A12 | The catalogue contains the **three contract kinds**; a `recurring_decaying` payout is strictly lower at each occurrence and stops being offered at its floor; the GUI shows the kind and the **next** payout before acceptance |
+| A12 | The catalogue contains the kinds allowed by Q41; a `recurring_decaying` payout is **strictly lower at each occurrence, logarithmically**, and stops being offered at its per-item floor; the GUI shows the kind and the **next** payout before acceptance |
 
 ---
 
@@ -388,9 +389,12 @@ not weeks.
 | Q35 | **I2 rewritten for a cap of three contracts**: "at least 1 of the 3 from stock, never all 3 without producing" — is that the faithful translation? | I2 is an accepted indicator; rewriting it silently would make the acceptance test say something the requester never agreed to | Philippe | block 3 |
 | Q36 | **Shared stock, three contracts**: first-come first-served at dispatch, or quantities **reserved** per contract? | Unreserved: the GUI cannot say "this contract is ready"; reserved: the stock is fragmented and the player fights the interface | Philippe | block 3 |
 | Q37 | The dial step (D34): does the research **stop at `rich`**, or can it reach `unlimited` mid-game — in which case I1/I2 are void from that moment, not from map creation? | Reaching `unlimited` by research puts the sandbox inside the balanced game | Philippe | block 3 |
-| Q38 | `recurring_decaying`: where is the **floor** (below local cost = a trap; above = a nudge), and can the player **abandon** a recurring contract, at what cost? | No floor: an infinite tail of worthless contracts. No abandon: the player is imprisoned by a contract signed at tier 2 | Philippe | block 3 |
-| Q39 | Does a recurring contract **hold one of the three active slots** for its whole life, or live outside the cap? | Inside: three recurring contracts freeze the catalogue and no opportunity ever appears | Philippe | block 3 |
-| Q40 | **Decay shape**: fixed percentage per occurrence, fixed step in credits, or a curve tied to the tier? And may a company's identity skew its mix of kinds? | A % decays to infinity; a fixed step can jump below cost in two occurrences on a cheap item | Philippe | block 3 |
+| ~~Q38~~ | ~~Where is the floor?~~ → **a minimum price per delivered item, from the price table; the contract stops being offered there** (D36). The curve is logarithmic, anchored on the tier | — | Philippe | **settled 2026-10-25, ADR 0020** |
+| Q38-bis | Can the player **abandon** a recurring contract — freely, with a penalty, or never? | Without an answer, a contract signed at tier 2 is a prison at tier 4 | Philippe | block 3 |
+| Q38-ter | Is the per-item floor **below** the local production cost (the contract dies by itself in the player's interest) or **above** it (a thin margin, farmable forever)? | Above: the decaying kind never ends, and `0019`'s purpose is lost | Philippe | block 3 |
+| ~~Q39~~ | ~~Does a recurring contract hold a slot?~~ → **answered as "one contract kind at a time", which is ambiguous — see Q41** | — | Philippe | **reformulated 2026-10-25** |
+| ~~Q40~~ | ~~Decay shape?~~ → **logarithmic, anchored on the tier, floored per delivered item** (D36) | — | Philippe | **settled 2026-10-25, ADR 0020** |
+| Q41 | **"One contract kind at a time"**: (A) a **homogeneous catalogue** — the company offers a single kind, and the kind changes when the catalogue is regenerated; or (B) **at most one contract of each kind** among the three slots? | A: companies get a mood, and A12 is wrong. B: the slots map onto the kinds, and a recurring contract does hold a slot | Philippe | block 3 |
 | Q32 | Moving credits between **two companies**: item conversion only, or a transfer between counters with a fee? | Free transfers: no reason to hold money anywhere; for-pay only: tedious for a legitimate player | Philippe | block 4 |
 | Q09 | Exact publishing procedure on `mods.factorio.com` (upload, moderation, delay) | `[to verify]` — no credible release date without it | cadrage (research) | block 7 |
 
