@@ -1,6 +1,6 @@
 # AGENTS.md — working instructions for coding agents
 
-`factorio-contrats` is a Factorio 2.1 mod (Lua 5.2) adding company contracts through a commercial
+`comptoir-contracts` is a Factorio 2.1 mod (Lua 5.2) adding company contracts through a commercial
 hub. It is a **game mod, not a service**: nothing runs in production, nothing is supervised. Read
 `docs/00-cadrage.md` before any change; the framing is the contract.
 
@@ -15,7 +15,7 @@ frozen inputs and are never edited.
 ```bash
 make check     # Lua syntax check over every .lua file (luac -p)
 make test      # headless Factorio scenario run (arrives with the first code)
-make package   # build factorio-contrats_<version>.zip — name format is mandatory
+make package   # build comptoir-contracts_<version>.zip — name format is mandatory
 ```
 
 Verified environment facts (2026-10-25): Factorio headless 2.1.23 runs from

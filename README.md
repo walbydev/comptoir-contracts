@@ -1,8 +1,8 @@
-# factorio-contrats
+# comptoir-contracts
 
-A Factorio 2.1 **mod set** — **company contracts** through a commercial hub (space elevator plus a
-spaceport). Delivered contracts pay credits and/or technologies; credits buy stacks of materials or
-technologies without research.
+A Factorio 2.1 mod — **company contracts** through a commercial hub (space elevator plus a spaceport).
+A company posts contracts, the players' cooperative fills them and is paid in credits; credits buy
+stacks of materials at the counter.
 
 > Guiding rule: **the hub complements local production, it never replaces it.**
 
@@ -17,10 +17,9 @@ Everything else is **parked as evolution**, written in `adr/` and out of v1: the
 bounties, the printing right, recurring and decaying contracts, debt and resale, dedicated hub sites,
 buying technologies, credit transfers, and the four-mod set.
 
-State: **blocks 1–3 closed** (2026-10-25) — 50 decisions (4 withdrawn), 28 ADRs, 14 acceptance criteria,
-**no question left blocking v1**, 15 parked with their features. Block 4 (technical constraints) is
-open. This repository holds the project definition, not code yet. No development before tag
-`v0.1-cadrage`.
+State: **blocks 1–3 closed, block 4 in progress** (2026-10-25) — 55 decisions (4 withdrawn), 31 ADRs,
+14 acceptance criteria, **no question left blocking v1**, 15 parked with their features. The
+repository holds the project definition, not code yet. No development before tag `v0.1-cadrage`.
 
 | Document | Purpose |
 |---|---|

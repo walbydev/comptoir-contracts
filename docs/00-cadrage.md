@@ -1,9 +1,9 @@
 # Framing — Company contracts (Factorio 2.1 mod set)
 
 > Version: 0.3 · Date: 2026-10-25 · Requested by: Philippe Ryf
-> Status: **blocks 1–3 CLOSED, block 4 in progress** (2026-10-25) — 52 decisions recorded (4 withdrawn), 30 ADRs, 14
+> Status: **blocks 1–3 CLOSED, block 4 in progress** (2026-10-25) — 55 decisions recorded (4 withdrawn), 31 ADRs, 14
 > acceptance criteria, **no question left blocking v1**, 15 parked with their features.
-> Repository: `walbydev/factorio-contrats` (public GitHub, MIT) — created and verified 2026-10-25.
+> Repository: `walbydev/comptoir-contracts` (public GitHub, MIT) — created and verified 2026-10-25.
 > No development before tag `v0.1-cadrage`.
 
 **Language convention:** this document, all ADRs and all source code are written in **English**.
@@ -59,7 +59,7 @@ procedure, and "what the player does when a version breaks their game".
 
 ### 0.4 Code repository — settled
 
-**Decision of 2026-10-25: public GitHub `walbydev/factorio-contrats`** (option 3a), MIT licence,
+**Decision of 2026-10-25: public GitHub `walbydev/comptoir-contracts`** (option 3a), MIT licence,
 ADR `0003`. Verified through the API: public repository created, `HTTP 201`, `visibility: public`.
 
 Consequence: this document is **now versioned**. The handoff brief becomes a frozen input
@@ -152,6 +152,9 @@ onto what already exists.
 | D48 | Shop safety valve | The shop **always buys**, contract or not: it is the only way back from a cooperative at zero, and therefore the safety valve of the economy | ADR `0028` |
 | D49 | Hub power | The hub has a **small electric draw**: it must be connected to a grid, which is a placement constraint for free and a closed counter when unpowered | ADR `0030` |
 | D50 | Naming | **`<family>-<feature>`**, lowercase, hyphenated; the family is chosen once, before the first release, and never after. Candidates: `charter`, `concord`, `outpost`; recommendation `charter` | ADR `0029` |
+| D51 | Locale | Interface available in **English and French** (`locale/en`, `locale/fr`); every string goes in both files | Q49 → settled |
+| D52 | Energy role | An entity's energy source is **fixed by prototype**: a hub cannot become a producer. Orbital power therefore needs a **second prototype** (a receiver), which is a second loop | ADR `0031` |
+| D53 | Orbital power | **Parked as evolution.** When it returns: one receiver prototype, one up-going order type, one technology — and the failure mode of a lost shipment. Not v1 | ADR `0030`, `0031` |
 
 ### 1.2 Success indicators (observable) — **accepted by Philippe on 2026-10-25**
 
@@ -327,7 +330,7 @@ cut is kept as §4.3. Already certain:
 | **Randomness** | **never `math.random`**. A seeded generator per company, stored in `storage`, advanced only on generation | a shared random stream is how a mod desyncs in multiplayer |
 | **Money** | integers only, `ceil` on the escrow (D47), explicit rounding everywhere | D7 and D47 |
 | **Price table** | a plain Lua file (`scripts/prices.lua`) `require`d by `control.lua`, one table, versioned with the mod | readable, diffable, and no settings dance; it is a *design* artefact, not a preference |
-| **Locale** | `locale/en/` first; `locale/fr/` only if the requester asks (Q49) | the portal audience is international |
+| **Locale** | **`locale/en/` and `locale/fr/`** (D51) | the portal audience is international |
 | **Power** | an `electric` energy source with a low draw (`0030`) | a hub must be connected to a grid: a placement constraint for free |
 | **Space Age** | `"dependencies": ["base", "? space-age"]`; nothing else | D5 — the mod loads in both configurations and tests both |
 
@@ -468,9 +471,9 @@ resolved with its feature, not before.
 | ~~Q46~~ | ~~How much is reserved?~~ → **a percentage of the payout**, one rate for the whole set, `ceil`, in the price table (D47) | — | Philippe | **settled 2026-10-25, ADR 0028** |
 | ~~Q47~~ | ~~Coverage?~~ → **required**: a contract cannot be accepted if the cooperative's free balance does not cover the reservation; the shop buying goods is the way back from zero (D48) | — | Philippe | **settled 2026-10-25, ADR 0028** |
 | Q32 | Moving credits between **two companies**: item conversion only, or a transfer between counters with a fee? | Free transfers: no reason to hold money anywhere; for-pay only: tedious for a legitimate player | Philippe | block 4 |
-| Q48 | The **orbital power** evolution (ship solar panels up, power comes back): in **v1** or parked? It adds a second flow direction, therefore a second loop | In v1 it doubles the GUI and the failure modes of a loop that was cut to one | Philippe | block 4 |
-| Q49 | Interface language: **English only**, or English **and** French (`locale/fr/`)? | French only: the portal audience cannot read it. Both: two files to keep in sync for every string | Philippe | block 4 |
-| Q50 | The **family prefix** (D50): `charter`, `concord` or `outpost`? | It is the only decision that cannot be changed after the first release | Philippe | block 4 |
+| ~~Q48~~ | ~~Orbital power: v1 or parked?~~ → **parked as evolution** (D53); the hub produces nothing in v1, it only consumes | — | Philippe | **settled 2026-10-25** |
+| ~~Q49~~ | ~~Interface language?~~ → **English and French** (D51) | — | Philippe | **settled 2026-10-25** |
+| ~~Q50~~ | ~~Family prefix?~~ → **`comptoir`**: mod `comptoir-contracts`, repo renamed, package `comptoir-contracts_<version>.zip` (D50, ADR `0029`) | — | Philippe | **settled 2026-10-25** |
 | Q09 | Exact publishing procedure on `mods.factorio.com` (upload, moderation, delay) | `[to verify]` — no credible release date without it | cadrage (research) | block 7 |
 
 ---

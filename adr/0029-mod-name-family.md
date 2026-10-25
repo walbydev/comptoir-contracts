@@ -1,7 +1,7 @@
 # 0029 — The name: a family prefix, then the feature
 
-- **Status**: **proposed** 2026-10-25 — the rule is accepted by the requester, **the prefix itself is
-  his to choose**; nothing is named until he does
+- **Status**: **accepted** 2026-10-25 — family = **`comptoir`**, v1 mod = **`comptoir-contracts`**;
+  the repository was renamed to match in the same pass, before any publication
 - **Date**: 2026-10-25
 - **Block**: 4
 - **Amends**: `0013` (the four-mod set is parked, but the naming question survives it)
@@ -36,6 +36,46 @@ The requirement is precise: a **generic part** that future complementary mods ca
 **Recommendation: `charter`.** It says *why* a hub exists — someone granted the right to trade here —
 it carries the concession idea of `0021` even though hub sites are parked, and it composes cleanly:
 `charter-bank`, `charter-bounties`, `charter-freight`.
+
+### Second batch — 2026-10-25, `charter` rejected by the requester
+
+> « D'autres noms, charter me plaît pas trop. »
+
+The first batch is kept above as the record of what was considered. Four more, each judged on the same
+three criteria: does it compose with future features, does it say something about the world, is it
+pronounceable in French and English.
+
+| Family | v1 name | Future mods | Reading |
+|---|---|---|---|
+| **`meridian`** | `meridian-contracts` | `meridian-freight`, `meridian-bank`, `meridian-bounties` | a line that crosses a world; sounds like a trading house rather than a mechanic. Corporate, sober, pronounceable both ways. **New recommendation** |
+| `convoy` | `convoy-contracts` | `convoy-freight`, `convoy-escort` | freight and movement, punchy, immediately concrete — but it points at transport more than at trade |
+| `caravan` | `caravan-contracts` | `caravan-freight` | a trade route, warm and human; slightly land-based for a setting with space elevators |
+| `comptoir` | `comptoir-contracts` | `comptoir-freight` | French for *trading post*, which is exactly what a hub is; unique on the portal and memorable, but exotic to an English-speaking player |
+
+**New recommendation: `meridian`.** It is the only one of the four that reads as a **company group**
+rather than as a single mechanic, which is what a family prefix has to do.
+
+### Decision — 2026-10-25: `comptoir`
+
+> « 1 comptoir »
+
+The requester chose the option that was listed as the exotic one, and he is right for a reason worth
+recording: **`comptoir` is already the project's word for the building.** The vocabulary settled earlier
+was "comptoir rather than charter" for the hub itself, so naming the family after it is the only choice
+that keeps one word for one thing. A player reads `comptoir-contracts`, walks to a *comptoir*, and the
+fiction holds without a glossary.
+
+| | |
+|---|---|
+| v1 mod id | **`comptoir-contracts`** |
+| portal title | **Comptoir — Contracts** |
+| future mods | `comptoir-freight`, `comptoir-bank`, `comptoir-bounties` |
+| repository | `walbydev/comptoir-contracts` — renamed 2026-10-25, before any publication |
+| package | `comptoir-contracts_<version>.zip` |
+
+**Accepted risk**: the word is French, and an English-speaking player sees a foreign word on the portal.
+It is short, it is pronounced nearly the same in both languages, and the mod's own text will introduce
+it. The alternative — a neutral corporate word — was tried twice and read as generic.
 
 ## What must be checked before it is written in `info.json`
 
