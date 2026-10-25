@@ -17,14 +17,15 @@ Everything else is **parked as evolution**, written in `adr/` and out of v1: the
 bounties, the printing right, recurring and decaying contracts, debt and resale, dedicated hub sites,
 buying technologies, credit transfers, and the four-mod set.
 
-State: **blocks 1–5 closed** (2026-10-25) — 62 decisions (4 withdrawn), 36 ADRs,
-18 acceptance criteria, **no question left blocking v1**, 15 parked with their features. The
+State: **blocks 1–5 closed** (2026-10-25) — 63 decisions (4 withdrawn), 37 ADRs,
+22 acceptance criteria, **no question left blocking v1**, 15 parked with their features. The
 repository holds the project definition, not code yet. No development before tag `v0.1-cadrage`.
 
 | Document | Purpose |
 |---|---|
 | [`docs/00-cadrage.md`](docs/00-cadrage.md) | master document: ten blocks, environment, vision, scope |
 | [`docs/05-price-table.md`](docs/05-price-table.md) | the price table, computed from the game's own recipes |
+| [`docs/06-interface.md`](docs/06-interface.md) | the window: two tabs, one header, every field specified |
 | [`tools/cost_table.py`](tools/cost_table.py) | the instrument that computes it (`make prices`) |
 | [`adr/`](adr/) | architecture decisions, numbered, never rewritten |
 | [`docs/entrants/`](docs/entrants/) | frozen handoff brief (input material, original language) |

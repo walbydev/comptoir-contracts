@@ -1,7 +1,7 @@
 # Framing — Company contracts (Factorio 2.1 mod set)
 
 > Version: 0.3 · Date: 2026-10-25 · Requested by: Philippe Ryf
-> Status: **blocks 1–5 CLOSED** (2026-10-25) — 62 decisions recorded (4 withdrawn), 36 ADRs, 18
+> Status: **blocks 1–5 CLOSED** (2026-10-25) — 63 decisions recorded (4 withdrawn), 37 ADRs, 22
 > acceptance criteria, **no question left blocking v1**, 15 parked with their features.
 > Repository: `walbydev/comptoir-contracts` (public GitHub, MIT) — created and verified 2026-10-25.
 > No development before tag `v0.1-cadrage`.
@@ -162,6 +162,7 @@ onto what already exists.
 | D58 | Contract generation | Pool = catalogue ∩ research unlocked ∩ tier; weighted pick by the company's character; quantity from a payout band; deadline = `max(10 min, qty × machine_seconds / 2)`; **seeded RNG per company**, never `math.random` | ADR `0034` |
 | D59 | Refill | **Immediate**: a slot refills as soon as its contract is completed or expires. No timer, no clock, therefore no `on_tick` | ADR `0035` |
 | D60 | Balancing numbers | Scale **10** credits per raw unit · escrow **20 %** of the payout · endowment **3 000** credits issued once to the cooperative | ADR `0036` |
+| D61 | Window | **Two tabs** (*Contracts*, *Counter*) in one window, with a **permanent header**: company, character line, and two numbers — `available` and `reserved` | ADR `0037`, `docs/06-interface.md` |
 
 ### 1.2 Success indicators (observable) — **accepted by Philippe on 2026-10-25**
 
@@ -301,6 +302,10 @@ API for third-party mods beyond the add-on interface, final art.
 | A16 | **No ingredient of the counter's recipe has oil anywhere in its tree** (D56), checked with the same measurement that builds the price table |
 | A17 | With a tier-1 catalogue, **every item offered can be produced with red/green research and no fluid** (D57) |
 | A18 | **No generated contract ever contains an item whose recipe is not unlocked** for the force (D58) — a trap that steals an escrow would fail the suite |
+| A19 | The header's two numbers always satisfy `available + reserved = total` for the cooperative (D61) |
+| A20 | At 100 % and at 150 % GUI scale, **no text is truncated and no control falls outside the window** |
+| A21 | Every visible string exists in **both** `locale/en` and `locale/fr`; a missing key shows as the key itself and is a failure, not a fallback |
+| A22 | An action button is **never enabled when the action would fail** (no coverage, no goods in the hub, no power) |
 
 ---
 
@@ -489,6 +494,8 @@ resolved with its feature, not before.
 | ~~Q51~~ | ~~Three balancing numbers?~~ → **scale 10, escrow 20 %, endowment 3 000** (D60, ADR `0036`) | — | Philippe | **settled 2026-10-25** |
 | ~~Q52~~ | ~~The three tier thresholds~~ → **dissolved**: a tier is read from the item's oil-chain depth, not from a technology (D57). The counter itself is gated by one early red/green technology (D56) | — | Philippe | **settled 2026-10-25** |
 | ~~Q53~~ | ~~Cadence: immediate or timer?~~ → **immediate**, no timer, therefore no clock (D59, ADR `0035`) | — | Philippe | **settled 2026-10-25** |
+| Q54 | **Deadline display**: digits only (`5:33`), a bar only, or both? | Digits answer "do I have time", a bar answers "am I in trouble" — at a glance, and the player is often in a hurry | Philippe | block 6 |
+| Q55 | **Quantities in the counter**: a text field per row, or a `1 / 10 / 100 / stack` selector? | A field is precise but needs the keyboard; a selector is one click but cannot express 37 | Philippe | block 6 |
 
 ---
 
