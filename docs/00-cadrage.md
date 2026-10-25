@@ -1,7 +1,7 @@
 # Framing — Company contracts (Factorio 2.1 mod set)
 
 > Version: 0.3 · Date: 2026-10-25 · Requested by: Philippe Ryf
-> Status: **blocks 1–7 CLOSED** (2026-10-25) — 68 decisions recorded (4 withdrawn), 39 ADRs, 24
+> Status: **blocks 1–7 CLOSED, block 8 in progress** (2026-10-25) — 70 decisions recorded (4 withdrawn), 40 ADRs, 27
 > acceptance criteria, **no question left blocking v1**, 15 parked with their features.
 > Repository: `walbydev/comptoir-contracts` (public GitHub, MIT) — created and verified 2026-10-25.
 > No development before tag `v0.1-cadrage`.
@@ -168,6 +168,8 @@ onto what already exists.
 | D64 | Versioning | **0.x** until non-author players have run it and it has survived a game version bump; then `1.0.0`. A patch bump fixes behaviour, a minor bump may change the economy and must ship migrations. **A release is never deleted or rewritten** | ADR `0039` |
 | D65 | Support | **Public GitHub Issues**, linked from the portal, four-field template (mod version, game version ± Space Age, `factorio-current.log`, expected). **No telemetry, no error endpoint** — the mod has no network code at all | ADR `0039` |
 | D66 | Local testing | Development happens in a **separate `--mod-directory`**, in **two copies** (with and without Space Age), never in the player's real mod folder | ADR `0039`, `docs/07-exploitation.md` |
+| D67 | Rights | **Every player may act** (accept, deliver, buy, sell). No permission system, because the engine has **no `custom-permission` type** — measured on 2.1.23 — and because a container can be mined by anyone. Damage is bounded by design: ≤ 3 slots × 20 % escrow, reserve shown before acceptance, counter always buys | ADR `0040`, `docs/08-security-and-rights.md` |
+| D68 | Privacy | **No personal data**: no player name, no id, no playtime in `storage` — contracts are non-nominative and the pot is one account. **No network code**, no telemetry, no anti-cheat (a save is editable; pretending otherwise is theatre) | ADR `0040` |
 
 ### 1.2 Success indicators (observable) — **accepted by Philippe on 2026-10-25**
 
@@ -313,6 +315,9 @@ API for third-party mods beyond the add-on interface, final art.
 | A22 | An action button is **never enabled when the action would fail** (no coverage, no goods in the hub, no power) |
 | A23 | The quantity field and the presets **never disagree**: a preset writes the field, and the action always acts on the displayed value |
 | A24 | No preset can exceed what the balance allows; a preset that would is **clamped and displays the clamped value before the click** |
+| A25 | The built archive contains **no key, no token, no absolute path**, and the mod declares no dependency that can reach the network |
+| A26 | A fresh save contains **no player name and no player id** anywhere in `storage` |
+| A27 | Loading a save **with the mod removed** produces the engine's own warning and no crash from `on_load` / `on_configuration_changed` |
 
 ---
 
@@ -503,6 +508,7 @@ resolved with its feature, not before.
 | ~~Q53~~ | ~~Cadence: immediate or timer?~~ → **immediate**, no timer, therefore no clock (D59, ADR `0035`) | — | Philippe | **settled 2026-10-25** |
 | ~~Q54~~ | ~~Deadline display?~~ → **digits and bar** (D62, ADR `0038`) | — | Philippe | **settled 2026-10-25** |
 | ~~Q55~~ | ~~Quantity control?~~ → **a field with presets** `1/10/100/stack`, one shared value (D63, ADR `0038`) | — | Philippe | **settled 2026-10-25** |
+| Q56 | **Per-force economy**: on a map with two forces (PvP, scenario), do companies and the cooperative belong to **each force** (recommended, and the assumed shape of the saved data), or is there **one global economy** shared across forces? | It decides the shape of `storage`; cheap now, expensive after release | Philippe | block 8 |
 
 ---
 
