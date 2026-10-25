@@ -1,7 +1,7 @@
 # Framing — Company contracts (Factorio 2.1 mod set)
 
 > Version: 0.3 · Date: 2026-10-25 · Requested by: Philippe Ryf
-> Status: **blocks 1–3 consolidated** — 29 decisions recorded, 17 questions still open.
+> Status: **blocks 1–3 consolidated** — 32 decisions recorded, 14 questions still open.
 > Repository: `walbydev/factorio-contrats` (public GitHub, MIT) — created and verified 2026-10-25.
 > No development before tag `v0.1-cadrage`.
 
@@ -128,12 +128,15 @@ onto what already exists.
 | D25 | Hub = company | **One hub = one space elevator = one spaceport = one company** that offers contracts **and** holds a bank counter; **several hubs**, on any surface, spaced apart | ADR `0014` |
 | D26 | Common element | **The credit is the only value common to every company** — no scrip, no company-bound item; prices differ, the unit does not. One treasury **per holder** | ADR `0014` |
 | D27 | Company accounts | Accounts are keyed by **holder and company**; a player's money sits *at* a company, so "where is my money" is a real question | ADR `0014` |
+| D28 | Issuer | **The colonial federation is the only issuer** (reading C); its account may go negative, and that is the money supply. Companies are operators with their own books; interest and bounties they pay are **debt**, not creation | ADR `0015` |
+| D29 | Solvency dial | A company can be **dry**. One startup dial sets its credit line: **poor** (0) / **rich** (default) / **unlimited** (sandbox, I1–I2 void). The numbers live in the data file | ADR `0015` |
+| D30 | Price table | **One price table** for the whole set; a company may differ by a bounded coefficient and by its catalogue, never by a second table | §4, Q18 |
 
 ### 1.2 Success indicators (observable) — **accepted by Philippe on 2026-10-25**
 
 | # | Indicator | Measurement | Status |
 |---|---|---|---|
-| I1 | The hub does not replace production | On a reference save, buying a material from the hub costs **strictly more** than producing it locally (ratio ≥ 1.5), measured on 10 reference items | accepted |
+| I1 | The hub does not replace production | On a reference save, buying a material from the hub costs **strictly more** than producing it locally (ratio ≥ 1.5), measured on 10 reference items | accepted — **`poor`/`rich` only, void in `unlimited`** |
 | I2 | Contracts remain a choice | At any time the player can honour at least **2 contracts out of 4** from current stock, and **at most 3 out of 4** without producing — so production is required to keep the pace | accepted |
 | I3 | The hub is used, not ignored | Philippe opens it at least **once per play session** across 5 consecutive test sessions | accepted |
 | I4 | The hub is understandable without documentation | First contract delivered **without reading external docs**, using only tooltips and the GUI | accepted |
@@ -250,6 +253,7 @@ API for third-party mods beyond the add-on interface, final art.
 | A7 | A contract generated on an acquired technology is always completable with what the player already produces (checked by the generator, not by hand) |
 | A8 | Each add-on installs, runs and is **removed** without breaking an existing save |
 | A9 | Two hubs on the same surface are refused below the minimum distance, **with a message and without losing the item**; two hubs on the same surface offer **different** contract sets |
+| A10 | The conservation invariant is asserted in `poor` and `rich`; in `unlimited` the game **says** it is a sandbox and the harness asserts only that nothing crashes |
 
 ---
 
@@ -360,20 +364,21 @@ not weeks.
 | ~~Q26~~ | ~~Cut interest and bounties to wave 2?~~ → **reframed: they become add-ons (D23)** | — | Philippe | **settled 2026-10-25** |
 | ~~Q05~~ | ~~A single hub or several?~~ → **several hubs per surface, on any surface, spaced apart (D25)** | — | Philippe | **settled 2026-10-25** |
 | Q08 | Late penalty or **dry expiry** of a contract? | A penalty needs a debt or reputation mechanic, otherwise the contract is neutral | Philippe | block 3 |
-| Q15 | **What funds the interest?** Cadence in game time? What does the bank show when the margin is empty? | Without a bound, interest creates credits out of nothing and I1 cannot hold | Philippe | block 3 |
+| ~~Q15~~ | ~~What funds the interest?~~ → **the company's margin, then its credit line (debt). Only the rate remains, and it belongs to the price table (Q18)** | — | Philippe | **settled in principle 2026-10-25, ADR 0015** |
 | Q16 | Rate-improvement technologies: **researched normally** (proposal) or bought at the hub? | Bought: the hub funds its own discount — a self-financing loop | Philippe | block 3 |
 | Q18 | Is the price **band** `cost < payout < price (= cost × 1.5)` the rule for every number? | Ad-hoc numbers: I1 is unmeasurable and the table gets rewritten three times | Philippe | block 3 |
 | Q19-bis | In multiplayer, does a player who does not produce accrue interest while **another** player's factory runs? | Force statistics are shared: without an attribution rule the AFK rule means nothing in multi | Philippe | block 3 |
 | Q21 | Bounty escalation anchored on **tier** (proposal) rather than **evolution factor**? | Evolution: farming nests becomes the optimal strategy — exactly what the bounty pays for | Philippe | block 3 |
 | Q22 | Science-pack bounty: **per unit** or **per milestone** — first *N* packs of each new tier then closed (proposal)? | Per unit: a large factory prints credits and the hub becomes decorative | Philippe | block 3 |
-| Q23 | **What funds the colonial federation's account?** Proposal: its commercial margin | A federation that pays without revenue is a money printer with a nice name | Philippe | block 3 |
+| ~~Q23~~ | ~~What funds the federation's account?~~ → **it issues**: its negative balance is the money supply, bounded by the D29 dial. It earns the interest on the debts it holds | — | Philippe | **settled in principle 2026-10-25, ADR 0015** |
 | Q24 | **Dispatch**: manual validation or automatic on quantities reached? And what happens to goods inside a warehouse on **expiry**, **destruction** or **unbinding**? | Silence here = a player silently loses hours of production | Philippe | block 3 |
-| Q25 | **Printing** (ADR 0012): create new credits (reading A, needs a cap and an I1 re-argument) or materialise an existing balance into items (reading B, value conserved)? | A: an arbitrage loop that makes every other mechanic decorative. B: a coherent progression gate | Philippe | block 3 |
+| Q25 | **Printing, reformulated by `0015`**: the research unlocks what — (a) a one-off issuance, (b) a recurring issuance bounded by the dial, (c) one step up on the dial? | (b) with a loose bound is a printer with a nice name; (c) is the cleanest and the easiest to audit | Philippe | block 3 |
 | Q27 | **Repository layout**: one monorepo holding the four mods (proposal) or four repositories? | Four repos: four CI, four changelogs, four places to be wrong | Philippe | block 4 |
 | Q28 | **Publication**: four portal listings with the core required (proposal) or a single pack? | A pack: the player cannot choose, which voids D23 | Philippe | block 7 |
 | Q29 | **Names**: `company-contracts` + `-bank` / `-bounties` / `-mint`? | Renaming after release is a migration for every existing save | Philippe | block 4 |
-| Q30 | **Who issues the unit** (ADR 0014): A — the federation issues, hubs are counters of one bank; B — every company issues its own credits; C (proposal) — the federation issues and guarantees, each company keeps its own books and can go dry | A: no company can fail, "hub = company" is a skin. B: N unauditable printers, and the common unit means nothing | Philippe | block 3 |
-| Q31 | May a company pay **beyond its balance** (overdraft, debt to the federation), or is solvency mandatory (proposal)? | Overdraft without a creditor is a printer; with a creditor it is a lending business that must be modelled | Philippe | block 3 |
+| ~~Q30~~ | ~~Who issues the unit?~~ → **C: the federation issues and guarantees; companies keep their own books** (D28) | — | Philippe | **settled 2026-10-25, ADR 0015** |
+| ~~Q31~~ | ~~May a company pay beyond its balance?~~ → **it can go dry, and one dial (poor / rich / unlimited) sets the credit line** (D29) | — | Philippe | **settled 2026-10-25, ADR 0015** |
+| Q33 | **Does a company repay its debt to the federation, and at what rate?** What happens to a company deeply in debt that never sells? | A free, never-repaid line means `unlimited` is the only honest mode and `poor` is decorative | Philippe | block 3 |
 | Q32 | Moving credits between **two companies**: item conversion only, or a transfer between counters with a fee? | Free transfers: no reason to hold money anywhere; for-pay only: tedious for a legitimate player | Philippe | block 4 |
 | Q09 | Exact publishing procedure on `mods.factorio.com` (upload, moderation, delay) | `[to verify]` — no credible release date without it | cadrage (research) | block 7 |
 

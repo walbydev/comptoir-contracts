@@ -6,7 +6,7 @@ technologies without research.
 
 > Guiding rule: **the hub complements local production, it never replaces it.**
 
-**State: framing in progress (blocks 1–3 consolidated, 24 decisions, 14 questions open).** This
+**State: framing in progress (blocks 1–3 consolidated, 32 decisions, 14 questions open).** This
 repository holds the project definition, not code yet. No development before tag `v0.1-cadrage`.
 
 | Document | Purpose |
@@ -43,11 +43,13 @@ core never knows its add-ons: the dependency arrow points one way only — ADR 0
 | Packaging | one core mod + optional add-ons | ADR 0013 |
 | Hub | **one hub = one elevator = one spaceport = one company**, with a bank counter; **several hubs**, on any surface, spaced apart | ADR 0014 |
 | Currency | the credit is the **only** value common to every company: prices differ, the unit does not | ADR 0014 |
+| Issuer | **the colonial federation issues** (its negative balance is the money supply); companies operate with their own books and can go dry | ADR 0015 |
+| Solvency | one startup dial sets each company's credit line: **poor** (0) / **rich** (default) / **unlimited** (sandbox) | ADR 0015 |
+| Prices | **one** price table for the whole set | §1.1 D30 |
 
-Still open and **not** defaulted: who issues the unit and whether a company can go dry (Q30, Q31),
-interest funding (Q15), printing: creation or materialisation (Q25), goods lost on expiry or
-destruction (Q24), what funds the federation (Q23), multiplayer attribution of activity (Q19-bis),
-science bounty unit (Q22), repository layout and names (Q27, Q29).
+Still open and **not** defaulted: what the printing research unlocks (Q25), goods lost on expiry or
+destruction (Q24), company debt and its rate (Q33), science bounty unit (Q22), multiplayer
+attribution of activity (Q19-bis), repository layout and names (Q27, Q29).
 
 ## Test chain
 
