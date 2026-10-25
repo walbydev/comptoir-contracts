@@ -556,7 +556,7 @@ def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description="Run the comptoir-contracts test bench.")
     parser.add_argument("--factorio", default=os.environ.get("FACTORIO_BIN", str(DEFAULT_FACTORIO)))
     parser.add_argument("--config", dest="configuration", default="both", choices=["both", "vanilla", "space-age"])
-    parser.add_argument("--scenario", default=None, help="run a single scenario id (a1 … a30, a9-save, a9-resume)")
+    parser.add_argument("--scenario", default=None, help="run a single scenario id (a1 … a31, a9-save, a9-resume)")
     parser.add_argument("--profile", default=None, choices=["poor", "rich", "unlimited"], help="startup profile for a10")
     parser.add_argument("--timeout", type=float, default=240.0, help="seconds per game run")
     parser.add_argument("--keep", action="store_true", help="keep the run directories")
