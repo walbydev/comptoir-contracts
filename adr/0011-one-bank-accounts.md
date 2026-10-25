@@ -1,6 +1,7 @@
 # 0011 — One bank, several account holders: players, companies, the colonial federation
 
-- **Status**: accepted — **the federation's own revenue is open (Q23)**
+- **Status**: accepted — **the federation's own revenue is open (Q23)**. The "one bank" clause is
+  **revised by `0014`** (one hub = one company, one treasury per holder); see Q30 for the issuer
 - **Date**: 2026-10-25
 - **Block**: 3
 - **Supersedes**: clarifies `0007` and `0009` (it does not replace them)

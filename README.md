@@ -41,10 +41,13 @@ core never knows its add-ons: the dependency arrow points one way only — ADR 0
 | Players | solo and multiplayer; gifting only via items, never a direct credit transfer | framing §2 |
 | Delivery | hub + elevator = interface, spaceport = counterparty, warehouses bound to one contract, fed by inserter **or** robot | ADR 0010 |
 | Packaging | one core mod + optional add-ons | ADR 0013 |
+| Hub | **one hub = one elevator = one spaceport = one company**, with a bank counter; **several hubs**, on any surface, spaced apart | ADR 0014 |
+| Currency | the credit is the **only** value common to every company: prices differ, the unit does not | ADR 0014 |
 
-Still open and **not** defaulted: interest funding (Q15), printing: creation or materialisation
-(Q25), goods lost on expiry or destruction (Q24), what funds the federation (Q23), multiplayer
-attribution of activity (Q19-bis), science bounty unit (Q22), repository layout and names (Q27, Q29).
+Still open and **not** defaulted: who issues the unit and whether a company can go dry (Q30, Q31),
+interest funding (Q15), printing: creation or materialisation (Q25), goods lost on expiry or
+destruction (Q24), what funds the federation (Q23), multiplayer attribution of activity (Q19-bis),
+science bounty unit (Q22), repository layout and names (Q27, Q29).
 
 ## Test chain
 

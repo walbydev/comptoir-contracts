@@ -1,7 +1,7 @@
 # Framing — Company contracts (Factorio 2.1 mod set)
 
 > Version: 0.3 · Date: 2026-10-25 · Requested by: Philippe Ryf
-> Status: **blocks 1–3 consolidated** — 24 decisions recorded, 14 questions still open.
+> Status: **blocks 1–3 consolidated** — 29 decisions recorded, 17 questions still open.
 > Repository: `walbydev/factorio-contrats` (public GitHub, MIT) — created and verified 2026-10-25.
 > No development before tag `v0.1-cadrage`.
 
@@ -102,7 +102,9 @@ onto what already exists.
 |---|---|---|---|
 | D1 | Nature of credits, first answer | **Virtual currency** (1a) — *superseded the same day* | ADR `0001` (superseded) |
 | D1-bis | Credit-item, final answer | **The item exists in the MVP**, convertible **both ways at the hub only**; bearer asset: giftable, storable in a chest | ADR `0004` |
+| D2 | Delivery method, first answer | Insertion into the hub or rocket launch — **superseded by D21** (warehouses + elevator, no rocket) | ADR `0010` |
 | D3 | Purchasable technologies | **Curated list** (2a): never the technology that unlocks the hub, never a tech on the critical path | ADR `0002` |
+| D4 | Number of hubs | One hub or several — **settled by D25**: several per surface | ADR `0014` |
 | D5 | Space Age | **Works with and without the DLC**: prototypes owned by the mod, SA assets reused only when the DLC is present | ADR `0005` |
 | D6 | Repository forge | **Public GitHub `walbydev`** (3a), licence **MIT** | ADR `0003` |
 | D7 | Money format | **Integer credits only** — no cents, no fractional credit anywhere, explicit rounding | ADR `0006` |
@@ -114,15 +116,18 @@ onto what already exists.
 | D13 | Game horizon | **2 h speedrun to 100 h long game** — the economy scales by **progression tier**, not wall-clock | §2 |
 | D14 | Passive player | **No income without activity**: interest pauses when nothing is produced | ADR `0008` |
 | D15 | Bounties | **Nests, worms and science packs pay escalating bonuses** | ADR `0009` |
-| D16 | Money source | **One treasury funds every credit payout** — contracts, bounties, interest | ADR `0009` |
+| D16 | Money source | **One treasury funds every credit payout** — contracts, bounties, interest. *Revised by D26*: one treasury **per company** | ADR `0009`, `0014` |
 | D17 | Contract mix | **Most contracts on already-acquired technologies**; a minority are "motivation" contracts requiring the next tier | §3 |
 | D18 | AFK signal | **Production**, not movement — *still open*: attribution in a shared multiplayer factory (Q19-bis) | ADR `0008` |
-| D19 | Bank structure | **One bank** holding the accounts of players, companies, the colonial federation and the bank itself: the federation pays contracts and bounties, the bank pays interest | ADR `0011` |
+| D19 | Bank structure | **One bank** holding the accounts of players, companies, the colonial federation and the bank itself — *revised by `0014`: one unit and one issuer, N books; who issues is Q30* | ADR `0011`, `0014` |
 | D20 | Printing right | **Printing credits is a right obtained by research** — *blocked*: creation or materialisation (Q25) | ADR `0012` |
 | D21 | Delivery chain | **Hub + space elevator = the interface with the spaceport**; dedicated **cargo warehouses bound 1:1 to a contract**, fed by inserter **or** logistics robot | ADR `0010` |
 | D22 | Dispatch and loss | Manual send or automatic on quantities reached; goods on expiry / destruction — *open* (Q24) | ADR `0010` |
 | D23 | Packaging | **A set: one core mod + optional add-ons** (`company-contracts`, `-bank`, `-bounties`, `-mint`) | ADR `0013` |
 | D24 | Add-on rule | Add-ons add **behaviour, not prototypes**, so they stay removable from a save | ADR `0013` |
+| D25 | Hub = company | **One hub = one space elevator = one spaceport = one company** that offers contracts **and** holds a bank counter; **several hubs**, on any surface, spaced apart | ADR `0014` |
+| D26 | Common element | **The credit is the only value common to every company** — no scrip, no company-bound item; prices differ, the unit does not. One treasury **per holder** | ADR `0014` |
+| D27 | Company accounts | Accounts are keyed by **holder and company**; a player's money sits *at* a company, so "where is my money" is a real question | ADR `0014` |
 
 ### 1.2 Success indicators (observable) — **accepted by Philippe on 2026-10-25**
 
@@ -212,6 +217,10 @@ ledger with its accounts, the shop, the curated technology list, the tier model.
 
 This is the loop that can be measured: **deliver → get paid → convert → buy**.
 
+Since D25 the core ships **several hubs**: each one is a company with its own catalogue, its own
+treasury and its own counter. The model is keyed by company from the first line of code — a "single
+hub for v1, several later" model would be a rewrite, not a setting.
+
 ### 3.3 Add-ons — behaviour only, no prototypes (D24)
 
 | Mod | Adds | Why it is separate |
@@ -240,6 +249,7 @@ API for third-party mods beyond the add-on interface, final art.
 | A6 | No Lua error on load, no desync in a two-player headless session performing conversions and dispatches in the same tick |
 | A7 | A contract generated on an acquired technology is always completable with what the player already produces (checked by the generator, not by hand) |
 | A8 | Each add-on installs, runs and is **removed** without breaking an existing save |
+| A9 | Two hubs on the same surface are refused below the minimum distance, **with a message and without losing the item**; two hubs on the same surface offer **different** contract sets |
 
 ---
 
@@ -272,9 +282,14 @@ API for third-party mods beyond the add-on interface, final art.
 `[TO FILL — block 5]` Contract = `storage` schema + save version number + migrations.
 
 Already certain:
-- **Accounts**: one per player, per company, the colonial federation, the bank. Integer balances.
-- **Conservation invariant**: the sum of all accounts plus the credits held in item form is unchanged
-  by every operation, except through a declared creation channel (none in the core).
+- **Company record** (D25): `id`, `name`, `surface`, `position`, `treasury`, `catalogue_seed`,
+  `state` (open / dry). One record per hub entity, linked by `unit_number`. It is the owner of a
+  catalogue, a treasury and a counter.
+- **Accounts**: keyed by `(holder, company)` — holder = player, company, federation. Integer balances.
+- **Conservation invariant**: `sum(company treasuries) + sum(player accounts) + credits held as
+  items` is constant, except through the issuer (Q30). Tested in CI at every configuration.
+- **Solvency** (proposal, Q31): a company pays contracts and interest **out of its own treasury** and
+  cannot go below zero; a company at zero stops offering new contracts until it sells.
 - **Warehouse binding**: by `unit_number`, one contract per warehouse, states `inert / bound / ready /
   dispatching`; an unbound warehouse refuses items and explains why.
 - **Federation revenue**: `[À TRANCHER — Q23]` proposal: its commercial margin — it buys deliveries
@@ -313,7 +328,7 @@ headless runs minimum, plus a two-player determinism scenario.
 
 | Risk | Likelihood | Impact | Mitigation |
 |---|---|---|---|
-| Scope: 24 decisions, four mods, one maintainer | high | ship nothing | the core first; add-ons only once the core holds I1/I2 |
+| Scope: 28 decisions, four mods, one maintainer | high | ship nothing | the core first; add-ons only once the core holds I1/I2 |
 | Balance: six interacting levers (payout, price, fee, rate, interest, technologies) | high | I1/I2 unprovable | tune in order: face value → fixed fee → rate curve → interest → technologies |
 | Money creation by accident | medium | I1 dies silently | conservation test in CI, per configuration |
 | Cross-mod API churn | medium | add-ons rewritten twice | freeze `api_version` before the first add-on |
@@ -343,7 +358,7 @@ not weeks.
 | ~~Q19~~ | ~~AFK signal: movement or production?~~ → **production (D18)** | — | Philippe | **settled** |
 | ~~Q20~~ | ~~One treasury or separate faucets?~~ → **one treasury (D16)** | — | Philippe | **settled** |
 | ~~Q26~~ | ~~Cut interest and bounties to wave 2?~~ → **reframed: they become add-ons (D23)** | — | Philippe | **settled 2026-10-25** |
-| Q05 | **One hub per surface** (proposal) or several (per surface, per force)? | Several: multi-surface and multi-force enter the MVP | Philippe | block 3 |
+| ~~Q05~~ | ~~A single hub or several?~~ → **several hubs per surface, on any surface, spaced apart (D25)** | — | Philippe | **settled 2026-10-25** |
 | Q08 | Late penalty or **dry expiry** of a contract? | A penalty needs a debt or reputation mechanic, otherwise the contract is neutral | Philippe | block 3 |
 | Q15 | **What funds the interest?** Cadence in game time? What does the bank show when the margin is empty? | Without a bound, interest creates credits out of nothing and I1 cannot hold | Philippe | block 3 |
 | Q16 | Rate-improvement technologies: **researched normally** (proposal) or bought at the hub? | Bought: the hub funds its own discount — a self-financing loop | Philippe | block 3 |
@@ -357,6 +372,9 @@ not weeks.
 | Q27 | **Repository layout**: one monorepo holding the four mods (proposal) or four repositories? | Four repos: four CI, four changelogs, four places to be wrong | Philippe | block 4 |
 | Q28 | **Publication**: four portal listings with the core required (proposal) or a single pack? | A pack: the player cannot choose, which voids D23 | Philippe | block 7 |
 | Q29 | **Names**: `company-contracts` + `-bank` / `-bounties` / `-mint`? | Renaming after release is a migration for every existing save | Philippe | block 4 |
+| Q30 | **Who issues the unit** (ADR 0014): A — the federation issues, hubs are counters of one bank; B — every company issues its own credits; C (proposal) — the federation issues and guarantees, each company keeps its own books and can go dry | A: no company can fail, "hub = company" is a skin. B: N unauditable printers, and the common unit means nothing | Philippe | block 3 |
+| Q31 | May a company pay **beyond its balance** (overdraft, debt to the federation), or is solvency mandatory (proposal)? | Overdraft without a creditor is a printer; with a creditor it is a lending business that must be modelled | Philippe | block 3 |
+| Q32 | Moving credits between **two companies**: item conversion only, or a transfer between counters with a fee? | Free transfers: no reason to hold money anywhere; for-pay only: tedious for a legitimate player | Philippe | block 4 |
 | Q09 | Exact publishing procedure on `mods.factorio.com` (upload, moderation, delay) | `[to verify]` — no credible release date without it | cadrage (research) | block 7 |
 
 ---
