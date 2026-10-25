@@ -17,7 +17,7 @@ Everything else is **parked as evolution**, written in `adr/` and out of v1: the
 bounties, the printing right, recurring and decaying contracts, debt and resale, dedicated hub sites,
 buying technologies, credit transfers, and the four-mod set.
 
-State: **blocks 1–3 consolidated, v1 scoped** — 43 decisions (4 withdrawn), 25 ADRs, 6 questions open
+State: **blocks 1–3 consolidated, v1 scoped** — 48 decisions (4 withdrawn), 27 ADRs, 2 questions open
 for v1. This repository holds the project definition, not code yet. No development before tag
 `v0.1-cadrage`.
 
@@ -65,10 +65,8 @@ core never knows its add-ons: the dependency arrow points one way only — ADR 0
 | Printing | **parked** — the research raises the credit line one step up the dial | ADR 0017 (parked) |
 | Failure | **parked** — a company in default loses its contracts and is resold | ADR 0018 (parked) |
 
-Still open, and the only ones that block v1: the price band (Q18), dispatch and what happens to goods
-when the hub dies (Q24), I2 rewritten for three contracts (Q35), one stock shared by three contracts
-(Q36), how much the escrow reserves (Q46), and whether a contract can be accepted without covering it
-(Q47).
+Still open, and the only ones that block v1: how much the escrow reserves (Q46), and whether a
+contract can be accepted without covering it (Q47).
 
 ## Test chain
 

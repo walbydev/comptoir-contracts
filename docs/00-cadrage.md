@@ -1,8 +1,8 @@
 # Framing — Company contracts (Factorio 2.1 mod set)
 
 > Version: 0.3 · Date: 2026-10-25 · Requested by: Philippe Ryf
-> Status: **blocks 1–3 consolidated, v1 scoped** — 45 decisions recorded (4 withdrawn), 27 ADRs,
-> 6 questions still open for v1, 15 parked with their features.
+> Status: **blocks 1–3 consolidated, v1 scoped** — 48 decisions recorded (4 withdrawn), 27 ADRs,
+> 2 questions still open for v1, 15 parked with their features.
 > Repository: `walbydev/factorio-contrats` (public GitHub, MIT) — created and verified 2026-10-25.
 > No development before tag `v0.1-cadrage`.
 
@@ -145,13 +145,16 @@ onto what already exists.
 | D41 | v1 scope | **v1 = one mod**: one hub = one company with its inventory, one contract kind (one-off, deadline), one shop, company balances, an endowment, three tiers, min-distance spacing. Everything else is parked as evolution | ADR `0025` |
 | D42 | Ledger | **Three kinds of holder**: one **cooperative** account shared by all players (no per-player wallet), one account **per company**, one **federation**. Buying moves credits from the cooperative to a company; honouring a contract moves them back | ADR `0026` |
 | D43 | Expiry penalty | An expired contract costs credits: the amount is **reserved on acceptance**, released on delivery, **forfeited to the offering company** on expiry, and **displayed before acceptance** | ADR `0027` |
+| D44 | Dispatch | **Manual, contract by contract** — with one shared stock and three contracts, an automatic dispatch has to pick a winner and there is no non-arbitrary rule. Goods inside a destroyed hub are **lost** | `0016`, D31 |
+| D45 | Stock attribution | **First come, first served** at dispatch: the stock is common, nothing is reserved per contract, and the contract list shows what is currently coverable | `0016`, D31 |
+| D46 | Price band | `cost < payout < price (= cost × 1.5)` governs **every** number in the single table | D30, `0006` |
 
 ### 1.2 Success indicators (observable) — **accepted by Philippe on 2026-10-25**
 
 | # | Indicator | Measurement | Status |
 |---|---|---|---|
 | I1 | The hub does not replace production | On a reference save, buying a material from the hub costs **strictly more** than producing it locally (ratio ≥ 1.5), measured on 10 reference items | accepted — **`poor`/`rich` only, void in `unlimited`** |
-| I2 | Contracts remain a choice | At any time the player can honour at least **2 contracts out of 4** from current stock, and **at most 3 out of 4** without producing — so production is required to keep the pace | **needs re-expression for a cap of 3 (Q35)** |
+| I2 | Contracts remain a choice | At any time **at least 1 of the 3 active contracts** is honourable from current stock, and **never all 3 without producing** — so production stays required to keep the pace | accepted 2026-10-25 (rewritten for a cap of 3) |
 | I3 | The hub is used, not ignored | Philippe opens it at least **once per play session** across 5 consecutive test sessions | accepted |
 | I4 | The hub is understandable without documentation | First contract delivered **without reading external docs**, using only tooltips and the GUI | accepted |
 | I5 | No technical regression | No Lua error on load, 0 errors across headless scenarios, a save from version N reloadable in N+1 | accepted |
@@ -375,10 +378,9 @@ not weeks.
 
 ## Appendix A — Open questions
 
-**After `0025` a v1 cut applies.** Only six questions still block v1: **Q08, Q18, Q24, Q35, Q36, Q45**.
-Every other open question belongs to a parked feature (recurring contracts, the bank, bounties, the
-mint, debt and resale, technology purchase, hub sites, credit transfers, the multi-mod set) and is
-resolved with its feature, not before.
+**After `0025` a v1 cut applies.** Only **two** questions still block v1: **Q46** (how much the escrow
+reserves) and **Q47** (whether a contract can be accepted without covering it). Every other open
+question belongs to a parked feature and is resolved with its feature, not before.
 
 | ID | Question | Impact if we get it wrong | Owner | State |
 |---|---|---|---|---|
@@ -401,12 +403,12 @@ resolved with its feature, not before.
 | ~~Q08~~ | ~~Late penalty or dry expiry?~~ → **a penalty in credits: the amount is reserved on acceptance and forfeited to the company on expiry** (D43) | — | Philippe | **settled 2026-10-25, ADR 0027** |
 | ~~Q15~~ | ~~What funds the interest?~~ → **parked with the bank (`0025`): no player wallet, no interest** | — | Philippe | **parked 2026-10-25** |
 | Q16 | Rate-improvement technologies: **researched normally** (proposal) or bought at the hub? | Bought: the hub funds its own discount — a self-financing loop | Philippe | block 3 |
-| Q18 | Is the price **band** `cost < payout < price (= cost × 1.5)` the rule for every number? | Ad-hoc numbers: I1 is unmeasurable and the table gets rewritten three times | Philippe | block 3 |
+| ~~Q18~~ | ~~Is the band the rule for every number?~~ → **yes**: `cost < payout < price (= cost × 1.5)` for every entry | — | Philippe | **settled 2026-10-25** |
 | Q19-bis | In multiplayer, does a player who does not produce accrue interest while **another** player's factory runs? | Force statistics are shared: without an attribution rule the AFK rule means nothing in multi | Philippe | block 3 |
 | Q21 | Bounty escalation anchored on **tier** (proposal) rather than **evolution factor**? | Evolution: farming nests becomes the optimal strategy — exactly what the bounty pays for | Philippe | block 3 |
 | Q22 | Science-pack bounty: **per unit** or **per milestone** — first *N* packs of each new tier then closed (proposal)? | Per unit: a large factory prints credits and the hub becomes decorative | Philippe | block 3 |
 | ~~Q23~~ | ~~What funds the federation's account?~~ → **it issues**: its negative balance is the money supply, bounded by the D29 dial. It earns the interest on the debts it holds | — | Philippe | **settled in principle 2026-10-25, ADR 0015** |
-| Q24 | **Dispatch**: manual, contract by contract (proposed — with a shared stock and three contracts, an automatic dispatch has to pick a winner, and there is no non-arbitrary rule), or automatic? And what happens to goods in the hub when it is **destroyed**? | Silence here = a player silently loses hours of production | Philippe | block 3 |
+| ~~Q24~~ | ~~Dispatch and loss rules?~~ → **manual, contract by contract; goods inside a destroyed hub are lost** (D44) | — | Philippe | **settled 2026-10-25** |
 | ~~Q25~~ | ~~Printing: creation or materialisation?~~ → **neither: the research raises the dial one step, per company, permanently (D34)** | — | Philippe | **settled 2026-10-25, ADR 0017** |
 | Q27 | **Repository layout**: one monorepo holding the four mods (proposal) or four repositories? | Four repos: four CI, four changelogs, four places to be wrong | Philippe | block 4 |
 | Q28 | **Publication**: four portal listings with the core required (proposal) or a single pack? | A pack: the player cannot choose, which voids D23 | Philippe | block 7 |
@@ -415,8 +417,8 @@ resolved with its feature, not before.
 | ~~Q31~~ | ~~May a company pay beyond its balance?~~ → **it can go dry, and one dial (poor / rich / unlimited) sets the credit line** (D29) | — | Philippe | **settled 2026-10-25, ADR 0015** |
 | ~~Q33~~ | ~~Does a company repay its debt?~~ → **no: it dies.** Contracts lost, none issued, the hub is resold to another company, the debt stays with the dead company and lands on the federation (D33) | — | Philippe | **settled 2026-10-25, ADR 0018** |
 | Q34 | **Resale terms**: who buys the dead hub (the federation as broker, a pool of neutral companies, the player under another name)? At what price? What happens to the stock inside? Does the buyer get a **fresh** catalogue and line? | A buyer with no cost and no constraint turns default into a free reset | Philippe | block 3 |
-| Q35 | **I2 rewritten for a cap of three contracts**: "at least 1 of the 3 from stock, never all 3 without producing" — is that the faithful translation? | I2 is an accepted indicator; rewriting it silently would make the acceptance test say something the requester never agreed to | Philippe | block 3 |
-| Q36 | **Shared stock, three contracts**: first-come first-served at dispatch, or quantities **reserved** per contract? | Unreserved: the GUI cannot say "this contract is ready"; reserved: the stock is fragmented and the player fights the interface | Philippe | block 3 |
+| ~~Q35~~ | ~~I2 rewritten for a cap of three~~ → **accepted**: "at least 1 of the 3 from stock, never all 3 without producing" | — | Philippe | **settled 2026-10-25** |
+| ~~Q36~~ | ~~Shared stock: first-come or reserved?~~ → **first come, first served**; nothing is reserved per contract (D45) | — | Philippe | **settled 2026-10-25** |
 | Q37 | The dial step (D34): does the research **stop at `rich`**, or can it reach `unlimited` mid-game — in which case I1/I2 are void from that moment, not from map creation? | Reaching `unlimited` by research puts the sandbox inside the balanced game | Philippe | block 3 |
 | ~~Q38~~ | ~~Where is the floor?~~ → **a minimum price per delivered item, from the price table; the contract stops being offered there** (D36). The curve is logarithmic, anchored on the tier | — | Philippe | **settled 2026-10-25, ADR 0020** |
 | Q38-bis | Can the player **abandon** a recurring contract — freely, with a penalty, or never? | Without an answer, a contract signed at tier 2 is a prison at tier 4 | Philippe | block 3 |
