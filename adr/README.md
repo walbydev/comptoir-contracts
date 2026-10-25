@@ -40,6 +40,8 @@ keeps the sentence written on the day — history, not current truth.
 | 0047 | The economy was inconsistent: a money target, a quantity floor of 1, a | accepted | 4 |
 | 0048 | The payout target follows the tier, and the deadline follows the whole | accepted | 2 |
 | 0049 | A2 is amended: inserter yes, robot not in v1 | accepted | 2 |
+| 0050 | The GUI is not testable headless, so R1 belongs to the requester's mac | accepted | 2 |
+| 0051 | The cap of three is on live contracts, not on offers | accepted | 1 |
 | 0002 | Purchasable technologies: a curated list, never the full tree | parked | 2 |
 | 0007 | A bank exists at the hub: deposits accrue interest | parked | 2 |
 | 0008 | Income is gated on activity: a passive player earns nothing | parked | 2 |
@@ -58,7 +60,7 @@ keeps the sentence written on the day — history, not current truth.
 | 0021 | Hub sites: dedicated zones instead of a minimum distance (proposed) | rejected | 1 |
 | 0045 | A container cannot draw power: the counter's entity type has to move | rejected | 1 |
 
-**32 of 49 ADRs are in force.** Everything else is history: parked with a
+**34 of 51 ADRs are in force.** Everything else is history: parked with a
 future feature, replaced by a later decision, or considered and refused.
 
 ## Reading order for someone arriving now

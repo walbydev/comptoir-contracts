@@ -1,8 +1,8 @@
 # Framing — Comptoir: company contracts (Factorio 2.1 mod)
 
 > Version: 1.0 · Date: 2026-10-25 · Requested by: Philippe Ryf
-> Status: **all ten blocks CLOSED** (2026-10-25) — **67 decisions in force**, 11 withdrawn
-> (Appendix C), 50 ADRs (33 in force), 30 acceptance criteria, **no question left blocking v1**,
+> Status: **all ten blocks CLOSED** (2026-10-25) — **68 decisions in force**, 11 withdrawn
+> (Appendix C), 51 ADRs (33 in force), 31 acceptance criteria, **no question left blocking v1**,
 > 12 open questions, all belonging to parked features.
 > Repository: `walbydev/comptoir-contracts` (public GitHub, MIT) — created and verified 2026-10-25.
 > No development before tag `v0.1-cadrage`.
@@ -169,6 +169,7 @@ onto what already exists.
 | D75 | No power | The counter **draws nothing**: no pole, no fuel, no closed state. The spaceport feeds it, from orbit. The only placement rule left is the **minimum distance** between two counters; the anchor is now the recipe's cost alone | ADR `0046` |
 | D76 | Money target | A contract targets **money, not tonnage**: `qty = clamp(round(target_tier / payout_per_unit), 1, 500)`, floor **one unit**. Target **per tier**: 2 500 / 7 500 / 20 000, and a company's tier is read from the player's research, never stored | ADR `0047`, `0048` |
 | D77 | Deadline unit | The deadline measures the **whole recipe tree**, not the item's own crafting time: `chain_seconds` is measured by `tools/cost_table.py` and ships in the price data. Ten processing units are 266.7 s of chain per unit → **35:20**, not the 6:00 the last-machine figure gave | ADR `0048` |
+| D78 | Contract cap | The cap of three counts **live contracts** (offered + accepted + in flight), not offers: the generator fills `3 − live`, so accepting never frees a slot, and a fourth contract is refused with `no_free_slot` | ADR `0051` |
 
 **Eleven decisions are not listed here.** They were withdrawn, replaced or suspended, and
 nothing in force depends on them; they are kept in **Appendix C** so the history stays
@@ -333,6 +334,7 @@ API for third-party mods beyond the add-on interface, final art.
 | A28 | On a two-force map, a contract completed by force A leaves force B's cooperative balance and company records **byte-identical** — compared before and after |
 | A29 | **Only `down` may send**: in every other state the send button is disabled and no script path can dispatch |
 | A30 | A generated deadline is always **≥ the round trip + the production time** it implies, so no contract can be impossible on arrival |
+| A31 | A company never holds more than **three live contracts** (offered + accepted + in flight): a fourth is refused with `no_free_slot`, and no offer is generated while live equals three |
 
 ---
 

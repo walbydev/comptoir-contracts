@@ -73,6 +73,7 @@ prevent.
 | A28 | two forces, one contract, the other force untouched | two-force map, digest force B's records before/after | L2 | cadrage |
 | A29 | only `down` sends — in every other state the send button is disabled and no script path dispatches | elevator forced through its four states via `act`; a send attempt in each of the three non-down states must be refused, and the stock untouched | L2 | cadrage |
 | A30 | a generated deadline is always ≥ the round trip + the production it implies | 1 000 generations: `deadline_ticks ≥ cycle + max(4 min, qty × seconds / 2 × 1.5)` for every one | L2 | cadrage |
+| A31 | never more than three live contracts | refill after each action; attempt a crafted fourth through `act` → `no_free_slot`; settle one → exactly one new offer | L2 | cadrage |
 | A4 | — | **withdrawn** (no conversion exists) | — | — |
 | A8 | add-ons install, run, and are removed cleanly | **out of v1**: no add-on exists. Returns with the first add-on | — | — |
 | A11 | bankruptcy is terminal, the company is resold | **out of v1**: parked (`0018`) | — | — |
