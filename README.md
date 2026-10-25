@@ -17,9 +17,9 @@ Everything else is **parked as evolution**, written in `adr/` and out of v1: the
 bounties, the printing right, recurring and decaying contracts, debt and resale, dedicated hub sites,
 buying technologies, credit transfers, and the four-mod set.
 
-State: **blocks 1–9 closed** (2026-10-25) — 74 decisions (4 withdrawn), 43 ADRs,
-30 acceptance criteria, **no question left blocking v1**, 15 parked with their features. The
-repository holds the project definition, not code yet. No development before tag `v0.1-cadrage`.
+State: **framing closed** (2026-10-25) — 76 decisions (4 withdrawn), 44 ADRs, 30 acceptance criteria,
+**no question left blocking v1**; 12 open questions, all belonging to parked features. The repository
+holds the project definition and the implementation spec, not code yet. Tag `v0.1-cadrage`.
 
 | Document | Purpose |
 |---|---|
@@ -29,6 +29,9 @@ repository holds the project definition, not code yet. No development before tag
 | [`docs/07-exploitation.md`](docs/07-exploitation.md) | local testing before publishing, packaging, versioning, support |
 | [`docs/08-security-and-rights.md`](docs/08-security-and-rights.md) | trust model, what is stored, what is never stored, licences |
 | [`docs/09-tests.md`](docs/09-tests.md) | the matrix: every criterion, its proof, its owner |
+| [`docs/10-risks-and-plan.md`](docs/10-risks-and-plan.md) | risks, the three lots, and the order of work |
+| [`docs/arborescence.md`](docs/arborescence.md) | what exists, and the shape the mod will have |
+| [`specs/001-v1/`](specs/001-v1/) | `spec.md` (behaviour), `design.md` (modules, storage, events), `tasks.md` (the ordered list) |
 | [`tools/cost_table.py`](tools/cost_table.py) | the instrument that computes it (`make prices`) |
 | [`adr/`](adr/) | architecture decisions, numbered, never rewritten |
 | [`docs/entrants/`](docs/entrants/) | frozen handoff brief (input material, original language) |

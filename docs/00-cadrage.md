@@ -1,8 +1,8 @@
-# Framing — Company contracts (Factorio 2.1 mod set)
+# Framing — Comptoir: company contracts (Factorio 2.1 mod)
 
-> Version: 0.3 · Date: 2026-10-25 · Requested by: Philippe Ryf
-> Status: **blocks 1–9 CLOSED** (2026-10-25) — 74 decisions recorded (4 withdrawn), 43 ADRs, 30
-> acceptance criteria, **no question left blocking v1**, 15 parked with their features.
+> Version: 1.0 · Date: 2026-10-25 · Requested by: Philippe Ryf
+> Status: **all ten blocks CLOSED** (2026-10-25) — 76 decisions recorded (4 withdrawn), 44 ADRs, 30
+> acceptance criteria, **no question left blocking v1**, 12 open questions, all belonging to parked features.
 > Repository: `walbydev/comptoir-contracts` (public GitHub, MIT) — created and verified 2026-10-25.
 > No development before tag `v0.1-cadrage`.
 
@@ -174,6 +174,8 @@ onto what already exists.
 | D70 | Test harness | In-game assertions live in a **separate mod `comptoir-test`, never packaged**. Three layers: L1 static (no game launch), L2 headless behaviour, L3 by eye. `make accept` prints the L3 rows as `UNVERIFIED` and exits non-zero until they are recorded | ADR `0042`, `docs/09-tests.md` |
 | D71 | CI | GitHub Actions does **packaging, archive hygiene, price-table reproducibility** — the three things it can really do. Gameplay tests run here, before each release; CI never pretends to run Factorio | ADR `0042` |
 | D72 | Elevator cycle | The elevator leaves and returns: `down → rising → away → descending → down`, **one dispatch at a time per hub**, cycle **2 min** (one number in the data file). **Only `down` may send**; goods leave with the car; the contract is paid **on return** | ADR `0043` |
+| D73 | Elevator car | **Route A**: the car is a **state** with three graphics, no per-tick work, no `rendering` API. Route B (a sprite that physically travels, with a bounded `on_tick`) is parked in `comptoir-freight`, after a spike | ADR `0044` |
+| D74 | Public API | The shipped mod exposes **one remote interface** (`snapshot`, `act`, `api_version`) — a separate mod cannot read another mod's `storage`, so without it no automated harness exists. It grants nothing the console does not already grant. **Corrects the wording of D70/ADR `0042`**: the mod ships no *test assertions*, but it does ship this API | ADR `0042` (corrected), `specs/001-v1/design.md` §5 |
 
 ### 1.2 Success indicators (observable) — **accepted by Philippe on 2026-10-25**
 
@@ -483,9 +485,9 @@ resolved with its feature, not before.
 | ~~Q23~~ | ~~What funds the federation's account?~~ → **it issues**: its negative balance is the money supply, bounded by the D29 dial. It earns the interest on the debts it holds | — | Philippe | **settled in principle 2026-10-25, ADR 0015** |
 | ~~Q24~~ | ~~Dispatch and loss rules?~~ → **manual, contract by contract; goods inside a destroyed hub are lost** (D44) | — | Philippe | **settled 2026-10-25** |
 | ~~Q25~~ | ~~Printing: creation or materialisation?~~ → **neither: the research raises the dial one step, per company, permanently (D34)** | — | Philippe | **settled 2026-10-25, ADR 0017** |
-| Q27 | **Repository layout**: one monorepo holding the four mods (proposal) or four repositories? | Four repos: four CI, four changelogs, four places to be wrong | Philippe | block 4 |
-| Q28 | **Publication**: four portal listings with the core required (proposal) or a single pack? | A pack: the player cannot choose, which voids D23 | Philippe | block 7 |
-| Q29 | **Names**: `company-contracts` + `-bank` / `-bounties` / `-mint`? | Renaming after release is a migration for every existing save | Philippe | block 4 |
+| ~~Q27~~ | ~~Repository layout: one monorepo for four mods, or four repos?~~ → **dissolved**: v1 is one mod in one repository (D41, `0025`) | — | cadrage | **settled 2026-10-25** |
+| ~~Q28~~ | ~~Four portal listings or a single bundle?~~ → **dissolved**: one listing (D41, `0025`) | — | cadrage | **settled 2026-10-25** |
+| ~~Q29~~ | ~~Names for the four mods?~~ → **dissolved**: family `comptoir-`, v1 = `comptoir-contracts` (D50, ADR `0029`) | — | Philippe | **settled 2026-10-25** |
 | ~~Q30~~ | ~~Who issues the unit?~~ → **C: the federation issues and guarantees; companies keep their own books** (D28) | — | Philippe | **settled 2026-10-25, ADR 0015** |
 | ~~Q31~~ | ~~May a company pay beyond its balance?~~ → **it can go dry, and one dial (poor / rich / unlimited) sets the credit line** (D29) | — | Philippe | **settled 2026-10-25, ADR 0015** |
 | ~~Q33~~ | ~~Does a company repay its debt?~~ → **no: it dies.** Contracts lost, none issued, the hub is resold to another company, the debt stays with the dead company and lands on the federation (D33) | — | Philippe | **settled 2026-10-25, ADR 0018** |
@@ -516,7 +518,7 @@ resolved with its feature, not before.
 | ~~Q54~~ | ~~Deadline display?~~ → **digits and bar** (D62, ADR `0038`) | — | Philippe | **settled 2026-10-25** |
 | ~~Q55~~ | ~~Quantity control?~~ → **a field with presets** `1/10/100/stack`, one shared value (D63, ADR `0038`) | — | Philippe | **settled 2026-10-25** |
 | ~~Q56~~ | ~~Per-force economy?~~ → **separate per force** (D69, ADR `0041`): each force has its own ledger, contracts and stock; nothing crosses a force boundary | — | Philippe | **settled 2026-10-25** |
-| Q57 | **The elevator car**: route A (a state swap between three sprites, no per-tick work) or route B (a rendered sprite that actually travels, with an `on_tick` active only during the animation)? | B is what was described and what Satisfactory does; it needs a half-hour spike before it enters the plan | Philippe | block 10 |
+| ~~Q57~~ | ~~The elevator car: A or B?~~ → **route A** for v1 (D73); route B parked in `comptoir-freight` after a spike | — | Philippe | **settled 2026-10-25** |
 
 ---
 
