@@ -1,8 +1,8 @@
 # Framing — Company contracts (Factorio 2.1 mod set)
 
 > Version: 0.3 · Date: 2026-10-25 · Requested by: Philippe Ryf
-> Status: **blocks 1–3 consolidated, v1 scoped** — 48 decisions recorded (4 withdrawn), 27 ADRs,
-> 2 questions still open for v1, 15 parked with their features.
+> Status: **blocks 1–3 CLOSED** (2026-10-25) — 50 decisions recorded (4 withdrawn), 28 ADRs, 14
+> acceptance criteria, **no question left blocking v1**, 15 parked with their features.
 > Repository: `walbydev/factorio-contrats` (public GitHub, MIT) — created and verified 2026-10-25.
 > No development before tag `v0.1-cadrage`.
 
@@ -148,6 +148,8 @@ onto what already exists.
 | D44 | Dispatch | **Manual, contract by contract** — with one shared stock and three contracts, an automatic dispatch has to pick a winner and there is no non-arbitrary rule. Goods inside a destroyed hub are **lost** | `0016`, D31 |
 | D45 | Stock attribution | **First come, first served** at dispatch: the stock is common, nothing is reserved per contract, and the contract list shows what is currently coverable | `0016`, D31 |
 | D46 | Price band | `cost < payout < price (= cost × 1.5)` governs **every** number in the single table | D30, `0006` |
+| D47 | Escrow amount | `reserved = ceil(payout × rate)`, **one rate for the whole set**, in the price table. A contract **cannot be accepted** if the cooperative's free balance does not cover it | ADR `0028` |
+| D48 | Shop safety valve | The shop **always buys**, contract or not: it is the only way back from a cooperative at zero, and therefore the safety valve of the economy | ADR `0028` |
 
 ### 1.2 Success indicators (observable) — **accepted by Philippe on 2026-10-25**
 
@@ -282,6 +284,7 @@ API for third-party mods beyond the add-on interface, final art.
 | A11 | A company driven to default **loses its contracts, issues none, and is resold**; the resale hands the building to a different company and the dead company's debt stays with it (headless assertion) |
 | A12 | A company's contract list contains **the single kind of that company**, and the kind is displayed; across two companies on the same surface the kinds **differ**; a `recurring_decaying` payout is **strictly lower at each occurrence, logarithmically**, and stops being offered at its per-item floor; the GUI shows the **next** payout before acceptance |
 | A13 | An expired contract moves **exactly the reserved amount** from the cooperative to the offering company; delivery releases the hold; the reserved amount is **visible before acceptance** |
+| A14 | From a cooperative at **zero**, selling goods to a hub (with no contract active) restores a spendable balance and allows a contract to be accepted again — no deadlock |
 
 ---
 
@@ -378,9 +381,9 @@ not weeks.
 
 ## Appendix A — Open questions
 
-**After `0025` a v1 cut applies.** Only **two** questions still block v1: **Q46** (how much the escrow
-reserves) and **Q47** (whether a contract can be accepted without covering it). Every other open
-question belongs to a parked feature and is resolved with its feature, not before.
+**After `0025` a v1 cut applies.** **No open question blocks v1 any more** — Q46 and Q47 were the last
+two and they are closed by `0028`. Every remaining open question belongs to a parked feature and is
+resolved with its feature, not before.
 
 | ID | Question | Impact if we get it wrong | Owner | State |
 |---|---|---|---|---|
@@ -430,8 +433,8 @@ question belongs to a parked feature and is resolved with its feature, not befor
 | Q43 | **Existing saves**: autoplace does not run retroactively — seed a site by script, or declare the mod **new-game only**? | New-game only is honest and cheap; a script seeding sites is a migration to maintain forever | Philippe | block 3 |
 | Q44 | **How many sites per surface**: a fixed number, a map-generation setting, or the autoplace controls? | A fixed number makes hubs scarce; the controls let the player decide how much economy he wants | Philippe | block 3 |
 | ~~Q45~~ | ~~Who holds the money?~~ → **a cooperative shared by all players + one account per company + the federation; no per-player wallet** (D42) | — | Philippe | **settled 2026-10-25, ADR 0026** |
-| Q46 | **How much is reserved?** A percentage of the payout, or a per-item amount in the price table? | A percentage scales with the contract; a per-item value makes a cheap contract punitive and an expensive one free | Philippe | block 3 |
-| Q47 | **Coverage**: may a contract be accepted when the cooperative cannot cover the reservation? | No: a broke cooperative cannot work at all. Yes: the hold is partial and the penalty becomes symbolic | Philippe | block 3 |
+| ~~Q46~~ | ~~How much is reserved?~~ → **a percentage of the payout**, one rate for the whole set, `ceil`, in the price table (D47) | — | Philippe | **settled 2026-10-25, ADR 0028** |
+| ~~Q47~~ | ~~Coverage?~~ → **required**: a contract cannot be accepted if the cooperative's free balance does not cover the reservation; the shop buying goods is the way back from zero (D48) | — | Philippe | **settled 2026-10-25, ADR 0028** |
 | Q32 | Moving credits between **two companies**: item conversion only, or a transfer between counters with a fee? | Free transfers: no reason to hold money anywhere; for-pay only: tedious for a legitimate player | Philippe | block 4 |
 | Q09 | Exact publishing procedure on `mods.factorio.com` (upload, moderation, delay) | `[to verify]` — no credible release date without it | cadrage (research) | block 7 |
 
