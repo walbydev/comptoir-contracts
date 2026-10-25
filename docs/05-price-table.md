@@ -40,14 +40,13 @@ document exists in a repository rather than in someone's memory.
 
 ## 2. The v1 counter list — measured
 
-Materials only, no buildings (decided 2026-10-25).
+Materials only, no buildings (decided 2026-10-25). **15 entries**: `pipe` was dropped on 2026-10-25 because the game names it only as an entity, so a shop row could not name it (ADR 0052).
 
 | Item | Raw | Credits | s (speed 1) | kJ | Payout | Shop price | Tier |
 |---|---|---|---|---|---|---|---|
 | `copper-cable` | 0.5 | 5 | 0.25 | 37.5 | 6 | 8 | 1 |
 | `iron-plate` | 1.0 | 10 | 3.2 | 288 | 12 | 15 | 1 |
 | `copper-plate` | 1.0 | 10 | 3.2 | 288 | 12 | 15 | 1 |
-| `pipe` | 1.0 | 10 | 0.5 | 75 | 12 | 15 | 1 |
 | `stone-brick` | 2.0 | 20 | 3.2 | 288 | 23 | 30 | 1 |
 | `iron-gear-wheel` | 2.0 | 20 | 0.5 | 75 | 23 | 30 | 1 |
 | `electronic-circuit` | 2.5 | 25 | 0.5 | 75 | 29 | 38 | 1 |
@@ -95,7 +94,7 @@ would have asked for it with no refinery on the map.
 
 | Tier | Meaning | Items |
 |---|---|---|
-| **1** | no fluid anywhere in the recipe tree — buildable before oil | 9: cable, both plates, pipe, brick, gear, circuit, steel, engine |
+| **1** | no fluid anywhere in the recipe tree — buildable before oil | 8: cable, both plates, brick, gear, circuit, steel, engine |
 | **2** | one oil step, or one item away from oil | 6: plastic, sulfur, electric engine, advanced circuit, battery, LDS |
 | **3** | a chain of oil-based items | 1: processing unit |
 
