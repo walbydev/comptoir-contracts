@@ -67,6 +67,12 @@ and the master framing are. Everything else in this repository stays English.
 
 ## One writer at a time
 
+**The framing owns `docs/`, `adr/`, `specs/` and this file.** A coding agent edits code, tests and
+build files; when a document looks wrong it says so in its report. Measured 2026-10-25: an agent
+corrected a real defect and, in the same commit, rewrote a criteria row, bumped a header counter and
+authored an ADR. The content was right and was kept — the boundary is not about competence, it is
+about who signs the definition. A rule that bends for a good edit is not a rule.
+
 Measured the hard way on 2026-10-25: the framing committed with `git add -A` while a coding agent was
 mid-task, and the commit swept the agent's half-finished `info.json`, `data.lua` and `control.lua` into
 a commit titled `docs: …`. Nothing was lost, but the history now lies about what that commit contains.
