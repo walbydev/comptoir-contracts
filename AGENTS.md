@@ -47,9 +47,10 @@ as a headless load failure. Do not claim a syntax check passed without quoting t
 
 ## Definition of done
 
-Lua syntax check green **with the real command output quoted**; the card's acceptance criteria each
-proven by a command output, a log line or a measurement; the framing updated through a new ADR when a
-convention changes. "It works in my game" is not evidence.
+Lua syntax check green **with the real command output quoted**; `make audit` clean (it is the gate —
+a document that contradicts itself blocks the lot, not just the release); the card's acceptance criteria
+each proven by a command output, a log line or a measurement; the framing updated through a new ADR when
+a convention changes. "It works in my game" is not evidence.
 
 ## The one language exception
 
