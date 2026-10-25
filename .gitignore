@@ -1,0 +1,16 @@
+# Artefacts locaux — ce dépôt est PUBLIC : rien de sensible ici.
+*.zip
+!docs/**/*.zip
+factorio-current.log
+factorio-previous.log
+*-save*.zip
+.DS_Store
+__pycache__/
+.venv/
+
+# jetons : jamais versionnés, quel que soit leur nom
+.env
+.env.*
+!.env.example
+*_token.txt
+*API_KEY*
