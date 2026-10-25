@@ -12,6 +12,8 @@
 --              2026-10-25 — ADR 0048: A30 recomputed per tier against `chain` (not `seconds`), with
 --                           tier-2/tier-3 presence asserted; the expiry wait budget follows the
 --                           longer deadlines the chain produces (a tier-1 circuit is 11:57, not 6:00)
+--              2026-10-25 — lot b: B1-gui-pure, the counter window's pure functions on crafted cases
+--                           (ADR 0050: the frame itself cannot be built without a client)
 -- Usages:      required by control.lua of the test mod, queued by `scenario.lua`
 -- Notes:       THE NUMBERS ARE RECOMPUTED FROM THE DATA, NEVER COPIED FROM THE MOD. The test mod
 --              requires `data/prices.lua` and `config/balance.lua` of the mod under test and derives
@@ -27,6 +29,10 @@
 local H = require("__comptoir-test__/scripts/harness")
 local balance = require("__comptoir-contracts__/config/balance")
 local prices = require("__comptoir-contracts__/data/prices")
+local catalogue = require("__comptoir-contracts__/config/companies")
+local contracts = require("__comptoir-contracts__/scripts/contracts")
+local gui_format = require("__comptoir-contracts__/scripts/gui/format")
+local gui_window = require("__comptoir-contracts__/scripts/gui/window")
 
 local MOD = "comptoir-contracts"
 local COUNTER = "comptoir-counter"
@@ -1341,9 +1347,181 @@ M["a9-resume"] = {
   end,
 }
 
+-- ---------------------------------------------------------------------------------------------------
+-- B1-gui-pure — the window's pure functions, three crafted cases each (lot b)
+-- ---------------------------------------------------------------------------------------------------
+-- ADR 0050: a frame cannot be built headless (no player, so no `player.gui.screen`), and the measured
+-- probe only works inside a running client. What CAN be proven here is the half the window computes:
+-- the module loads, and every function that turns a number into what the player reads answers the
+-- expected value on crafted inputs. The drawing side stays a by-eye criterion, and the scenario says
+-- so instead of pretending.
+
+M["b1-gui-pure"] = {
+  id = "B1-gui-pure",
+  name = "the GUI module loads, and its pure functions answer three crafted cases each",
+  run = function()
+    -- Required at the top of this file: a syntax error or a bad `require` inside
+    -- scripts/gui/window.lua would have stopped the whole bench before this line runs.
+    H.eq(gui_format.API_VERSION, 1, "B1-gui-pure: scripts/gui/format.lua loaded")
+    H.eq(gui_window.API_VERSION, 1, "B1-gui-pure: scripts/gui/window.lua loaded")
+    H.ok(type(gui_window.on_opened) == "function", "B1-gui-pure: the window exposes on_opened (the ADR 0050 entry point)")
+    H.ok(type(gui_window.on_click) == "function", "B1-gui-pure: the window exposes on_click")
+    H.ok(type(gui_window.on_text_changed) == "function", "B1-gui-pure: the window exposes on_text_changed")
+    H.at_least(#gui_window.REASONS, 20, "B1-gui-pure: every refusal reason is listed for the locale audit")
+
+    local reasons_ok = true
+    for _, reason in ipairs(gui_window.REASONS) do
+      if type(reason) ~= "string" or #reason < 3 or reason:find("%s") ~= nil then
+        reasons_ok = false
+      end
+    end
+    H.ok(reasons_ok, "B1-gui-pure: each reason is a plain key (no space, no number)")
+
+    -- Case 1, case 2, case 3 of a row: quantity, payout, reserve, clock and bar band. The contract
+    -- tables are plain: no game, no storage, no entity.
+    local rows = {
+      {
+        label = "case 1 (fresh offer, full bar)",
+        contract = { item = "iron-plate", quantity = 208, payout = 2496, reserve = 500, deadline_seconds = 333, deadline_tick = 19980 },
+        remaining = 19980,
+        total = 19980,
+        quantity = "208",
+        payout = "2 496",
+        reserve = "500",
+        clock = "5:33",
+        band = "normal",
+      },
+      {
+        label = "case 2 (a fifth of the time left)",
+        contract = { item = "electronic-circuit", quantity = 40, payout = 1160, reserve = 232, deadline_seconds = 40, deadline_tick = 2400 },
+        remaining = 500,
+        total = 2400,
+        quantity = "40",
+        payout = "1 160",
+        reserve = "232",
+        clock = "0:09",
+        band = "amber",
+      },
+      {
+        label = "case 3 (one second left, out of 35 minutes)",
+        contract = { item = "processing-unit", quantity = 1, payout = 1975, reserve = 395, deadline_seconds = 2121, deadline_tick = 127260 },
+        remaining = 60,
+        total = 127260,
+        quantity = "1",
+        payout = "1 975",
+        reserve = "395",
+        clock = "0:01",
+        band = "red",
+      },
+    }
+
+    for _, row in ipairs(rows) do
+      local texts = gui_format.row_texts(row.contract, row.remaining, row.total)
+      H.eq(texts.quantity, row.quantity, "B1-gui-pure: " .. row.label .. " quantity")
+      H.eq(texts.payout, row.payout, "B1-gui-pure: " .. row.label .. " payout")
+      H.eq(texts.reserve, row.reserve, "B1-gui-pure: " .. row.label .. " reserve")
+      H.eq(texts.clock, row.clock, "B1-gui-pure: " .. row.label .. " clock")
+      H.eq(texts.band, row.band, "B1-gui-pure: " .. row.label .. " bar band")
+      H.eq(texts.item, row.contract.item, "B1-gui-pure: " .. row.label .. " icon item")
+      H.at_most(texts.fraction, 1, "B1-gui-pure: " .. row.label .. " bar fraction stays in [0, 1]")
+      H.at_least(texts.fraction, 0, "B1-gui-pure: " .. row.label .. " bar fraction stays in [0, 1]")
+    end
+
+    -- The band boundaries themselves: 25 % is still normal, 10 % is still amber.
+    H.eq((gui_format.bar(2500, 10000)), 0.25, "B1-gui-pure: 25 % is the last normal fraction")
+    H.eq(select(2, gui_format.bar(2500, 10000)), "normal", "B1-gui-pure: 25 % is still normal")
+    H.eq(select(2, gui_format.bar(2499, 10000)), "amber", "B1-gui-pure: under 25 % is amber")
+    H.eq(select(2, gui_format.bar(1000, 10000)), "amber", "B1-gui-pure: 10 % is still amber")
+    H.eq(select(2, gui_format.bar(999, 10000)), "red", "B1-gui-pure: under 10 % is red")
+
+    -- Time formatting, three crafted cases (a zero, a minute boundary, a long contract).
+    H.eq(gui_format.clock(0), "0:00", "B1-gui-pure: time formatting of zero ticks")
+    H.eq(gui_format.clock(373), "0:07", "B1-gui-pure: time formatting rounds up to the second")
+    H.eq(gui_format.clock(43440), "12:04", "B1-gui-pure: time formatting of 12 minutes")
+
+    -- Grouping, three crafted cases (no separator, one separator, several).
+    H.eq(gui_format.grouped(208), "208", "B1-gui-pure: grouping 208")
+    H.eq(gui_format.grouped(2496), "2 496", "B1-gui-pure: grouping 2 496")
+    H.eq(gui_format.grouped(1234567), "1 234 567", "B1-gui-pure: grouping 1 234 567")
+
+    -- Clamping, three crafted cases: below the balance, above it, above the hard ceiling.
+    H.eq(gui_format.clamp_quantity(37, 200), 37, "B1-gui-pure: 37 under a 200 ceiling stays 37")
+    H.eq(gui_format.clamp_quantity(500, 200), 200, "B1-gui-pure: 500 under a 200 ceiling clamps to 200")
+    H.eq(gui_format.clamp_quantity(5000, 99999), gui_format.MAX_QUANTITY, "B1-gui-pure: nothing passes " .. tostring(gui_format.MAX_QUANTITY))
+    H.eq(gui_format.clamp_quantity(nil, 200), 1, "B1-gui-pure: an unreadable field falls back to the floor of 1")
+    H.eq(gui_format.clamp_quantity(12, 0), 1, "B1-gui-pure: a balance that allows nothing still floors at 1")
+
+    -- Parsing: digits only, never a guess.
+    H.eq(gui_format.parse_quantity("42"), 42, "B1-gui-pure: digits parse")
+    H.eq(gui_format.parse_quantity(" 42 "), 42, "B1-gui-pure: surrounding spaces are tolerated")
+    H.eq(gui_format.parse_quantity("4x"), nil, "B1-gui-pure: a letter is refused, not truncated to 4")
+    H.eq(gui_format.parse_quantity(""), nil, "B1-gui-pure: an empty field is refused")
+
+    -- Presets share one value (A23) and are clamped to the balance before any click (A24).
+    H.eq(gui_format.preset_count("10", 100, 37), 10, "B1-gui-pure: preset 10 with 37 affordable stays 10")
+    H.eq(gui_format.preset_count("stack", 100, 37), 37, "B1-gui-pure: a stack above the balance shows the balance")
+    H.eq(gui_format.preset_count("100", 100, 500), 100, "B1-gui-pure: preset 100 with 500 affordable stays 100")
+
+    local stack_size = prototypes.item[gui_format.price_order()[1]].stack_size
+    H.at_least(stack_size, 1, "B1-gui-pure: the stack preset reads a real prototype stack size")
+    H.eq(
+      gui_format.preset_count("stack", stack_size, 1000000),
+      stack_size,
+      "B1-gui-pure: a stack the balance covers is one stack"
+    )
+
+    -- The shop ladder: sixteen rows, cheapest first, deterministic.
+    local order = gui_format.price_order()
+    H.eq(#order, 16, "B1-gui-pure: the counter tab lists 16 items")
+    H.eq(order[1], "copper-cable", "B1-gui-pure: the cheapest item opens the ladder")
+    H.eq(order[#order], "processing-unit", "B1-gui-pure: the dearest item closes it")
+    local sorted = true
+    for index = 2, #order do
+      if prices.items[order[index - 1]].price > prices.items[order[index]].price then
+        sorted = false
+      end
+    end
+    H.ok(sorted, "B1-gui-pure: the ladder is in non-decreasing price order")
+
+    -- The header icon and the character line: one item per group, one line per company.
+    for _, group in ipairs(catalogue.groups) do
+      local item = gui_format.group_item(group)
+      H.eq(catalogue.items[item], group, "B1-gui-pure: the icon of " .. group .. " is a " .. group .. " item (" .. item .. ")")
+    end
+    H.eq(gui_format.group_item("electronics"), "copper-cable", "B1-gui-pure: electronics shows the copper cable")
+
+    local primary, secondary = gui_format.character({ weights = { chemistry = 3, electronics = 2, logistics = 1 } })
+    H.eq(primary, "chemistry", "B1-gui-pure: the dominant group leads the character line")
+    H.eq(secondary, "electronics", "B1-gui-pure: the second axis follows it")
+    local tied_primary, tied_secondary = gui_format.character({ weights = { chemistry = 3, electronics = 3, logistics = 1 } })
+    H.eq(tied_primary, "chemistry", "B1-gui-pure: equal weights fall back to the sorted group name")
+    H.eq(tied_secondary, "electronics", "B1-gui-pure: and so does the second axis")
+
+    -- The colour of a company is a function of its id alone, and wraps.
+    local first = gui_format.colour_of(1)
+    H.ok(type(first.r) == "number" and type(first.g) == "number" and type(first.b) == "number", "B1-gui-pure: colour_of returns a colour")
+    H.eq(gui_format.colour_of(1 + #gui_format.COLOURS).r, first.r, "B1-gui-pure: the colour palette wraps by id")
+
+    -- The remaining time is read from the contract, never recomputed by the window.
+    local remaining, total = contracts.time_left({ deadline_seconds = 333, deadline_tick = 1000 }, 200)
+    H.eq(remaining, 800, "B1-gui-pure: time_left counts down from the deadline")
+    H.eq(total, 19980, "B1-gui-pure: time_left reports the span the bar is a fraction of")
+    local late, _ = contracts.time_left({ deadline_seconds = 333, deadline_tick = 1000 }, 5000)
+    H.eq(late, 0, "B1-gui-pure: time_left never goes negative")
+
+    H.note(
+      "B1-gui-pure: the frame itself cannot be built headless (ADR 0050 — no `player.gui.screen` without a "
+        .. "client). Proven here: the two modules load, and row text, clamping, presets, grouping, the clock, "
+        .. "the bar bands, the price ladder, the character line and the colour answer the expected values on "
+        .. "crafted cases. The layout stays a by-eye criterion."
+    )
+  end,
+}
+
 -- The queue, in the order `docs/09-tests.md` lists the criteria.
 M.ORDER = {
   "a1", "a2", "a3", "a7", "a9", "a10", "a13", "a14", "a15", "a18", "a19", "a26", "a28", "a29", "a30",
+  "b1-gui-pure",
   "a9-save", "a9-resume",
 }
 
