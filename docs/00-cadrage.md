@@ -1,7 +1,7 @@
 # Framing — Company contracts (Factorio 2.1 mod set)
 
 > Version: 0.3 · Date: 2026-10-25 · Requested by: Philippe Ryf
-> Status: **blocks 1–3 consolidated, v1 scoped** — 43 decisions recorded (4 withdrawn), 25 ADRs,
+> Status: **blocks 1–3 consolidated, v1 scoped** — 45 decisions recorded (4 withdrawn), 27 ADRs,
 > 6 questions still open for v1, 15 parked with their features.
 > Repository: `walbydev/factorio-contrats` (public GitHub, MIT) — created and verified 2026-10-25.
 > No development before tag `v0.1-cadrage`.
@@ -143,6 +143,8 @@ onto what already exists.
 | D39 | No physical currency | **No credit item at all**: credits are integers on a balance, never an object. No face value, no conversion, no fee, no rate technology, nothing giftable (supersedes D1-bis, D8–D10) | ADR `0023` |
 | D40 | Non-nominative contracts | A contract belongs to the **company**, never to a player; any player may feed and dispatch; the payment goes to the company's balance; the cap is per company | ADR `0024` |
 | D41 | v1 scope | **v1 = one mod**: one hub = one company with its inventory, one contract kind (one-off, deadline), one shop, company balances, an endowment, three tiers, min-distance spacing. Everything else is parked as evolution | ADR `0025` |
+| D42 | Ledger | **Three kinds of holder**: one **cooperative** account shared by all players (no per-player wallet), one account **per company**, one **federation**. Buying moves credits from the cooperative to a company; honouring a contract moves them back | ADR `0026` |
+| D43 | Expiry penalty | An expired contract costs credits: the amount is **reserved on acceptance**, released on delivery, **forfeited to the offering company** on expiry, and **displayed before acceptance** | ADR `0027` |
 
 ### 1.2 Success indicators (observable) — **accepted by Philippe on 2026-10-25**
 
@@ -232,7 +234,7 @@ as the record of what was on the table and what was set aside.
 
 ### 3.2 Core: `company-contracts`
 
-Hub + space elevator, spaceport, **the hub's own inventory** (fed by inserter or logistics robot), the contract generator (one to three active contracts, current-tier majority + motivation minority, deadline expiry), **one-off contracts only**, credits as **company balances** (no item, no conversion), the shop with its single price table, and three progression tiers.
+Hub + space elevator, spaceport, **the hub's own inventory** (fed by inserter or logistics robot), the contract generator (one to three active contracts, current-tier majority + motivation minority, deadline expiry), **one-off contracts only**, credits as **one cooperative account plus one per company** (no item, no conversion), the **escrow on acceptance**, the shop with its single price table, and three progression tiers.
 
 **v1 = one mod.** The four-mod set of `0013` (`-bank`, `-bounties`, `-mint`) is **parked**: with no
 player wallet, no bounty channel and no credit line, none of the three add-ons has a subject in v1.
@@ -266,7 +268,7 @@ API for third-party mods beyond the add-on interface, final art.
 |---|---|
 | A1 | A fresh save honours its **first contract end to end in under 30 minutes**, with the hub and its inventory only — no second building to construct, otherwise the 2-hour horizon never starts |
 | A2 | The hub's inventory accepts insertion by inserter **and** by logistics robot; a contract can only be dispatched when its full quantity is in stock (no partial delivery) |
-| A3 | The **sum of every company balance plus the federation's** is unchanged by any operation except the initial endowment — no item leg, one number to assert |
+| A3 | The **sum of every company balance, the cooperative and the federation** is unchanged by any operation except the initial endowment — no item leg, one number to assert |
 | A4 | **Withdrawn** (no conversion exists) — replaced by: the shop shows the buying price and the selling price of an item **before** the transaction, and I4 holds on that screen |
 | A5 | The core loads and runs the same scenarios in **both** DLC configurations (headless, two matrices) |
 | A6 | No Lua error on load, no desync in a two-player headless session where both players fill and dispatch contracts in the same tick |
@@ -276,6 +278,7 @@ API for third-party mods beyond the add-on interface, final art.
 | A10 | The conservation invariant is asserted in `poor` and `rich`; in `unlimited` the game **says** it is a sandbox and the harness asserts only that nothing crashes |
 | A11 | A company driven to default **loses its contracts, issues none, and is resold**; the resale hands the building to a different company and the dead company's debt stays with it (headless assertion) |
 | A12 | A company's contract list contains **the single kind of that company**, and the kind is displayed; across two companies on the same surface the kinds **differ**; a `recurring_decaying` payout is **strictly lower at each occurrence, logarithmically**, and stops being offered at its per-item floor; the GUI shows the **next** payout before acceptance |
+| A13 | An expired contract moves **exactly the reserved amount** from the cooperative to the offering company; delivery releases the hold; the reserved amount is **visible before acceptance** |
 
 ---
 
@@ -311,9 +314,13 @@ Already certain:
 - **Company record** (D25): `id`, `name`, `surface`, `position`, `treasury`, `catalogue_seed`,
   `state` (open / dry). One record per hub entity, linked by `unit_number`. It is the owner of a
   catalogue, a treasury and a counter.
-- **Accounts**: keyed by `(holder, company)` — holder = player, company, federation. Integer balances.
-- **Conservation invariant**: `sum(company treasuries) + sum(player accounts) + credits held as
-  items` is constant, except through the issuer (D28). Tested in CI at every configuration.
+- **Accounts** (D42): three kinds only — **one cooperative** shared by all players, **one per company**,
+  **one federation**. No per-player balance, no item. Integer amounts.
+- **Reservation** (D43): accepting a contract holds an amount on the cooperative; delivery releases it,
+  expiry forfeits it to the company. The amount is displayed before acceptance.
+- **Conservation invariant** (A3): `sum(company balances) + cooperative + federation` is constant,
+  except through the initial endowment (D28). One number, no item leg. Tested in CI at every
+  configuration.
 - **Hub inventory** (D31): one custom inventory on the hub entity, fed by inserter or logistics robot.
   Up to three contracts read from it. No binding state, no second building.
 - **Solvency** (D29): a company pays out of its own balance plus a credit line drawn on the
@@ -391,7 +398,7 @@ resolved with its feature, not before.
 | ~~Q20~~ | ~~One treasury or separate faucets?~~ → **one treasury (D16)** | — | Philippe | **settled** |
 | ~~Q26~~ | ~~Cut interest and bounties to wave 2?~~ → **reframed: they become add-ons (D23)** | — | Philippe | **settled 2026-10-25** |
 | ~~Q05~~ | ~~A single hub or several?~~ → **several hubs per surface, on any surface, spaced apart (D25)** | — | Philippe | **settled 2026-10-25** |
-| Q08 | Late penalty or **dry expiry** of a contract? | A penalty needs a debt or reputation mechanic, otherwise the contract is neutral | Philippe | block 3 |
+| ~~Q08~~ | ~~Late penalty or dry expiry?~~ → **a penalty in credits: the amount is reserved on acceptance and forfeited to the company on expiry** (D43) | — | Philippe | **settled 2026-10-25, ADR 0027** |
 | ~~Q15~~ | ~~What funds the interest?~~ → **parked with the bank (`0025`): no player wallet, no interest** | — | Philippe | **parked 2026-10-25** |
 | Q16 | Rate-improvement technologies: **researched normally** (proposal) or bought at the hub? | Bought: the hub funds its own discount — a self-financing loop | Philippe | block 3 |
 | Q18 | Is the price **band** `cost < payout < price (= cost × 1.5)` the rule for every number? | Ad-hoc numbers: I1 is unmeasurable and the table gets rewritten three times | Philippe | block 3 |
@@ -420,7 +427,9 @@ resolved with its feature, not before.
 | Q42 | **A guaranteed hub site near the spawn**: nothing in 2.1's data guarantees a patch in the starting area, and a fresh save with no site shows no hub at all | The mod would be invisible during the whole 2-hour horizon (A1) | Philippe | block 3 |
 | Q43 | **Existing saves**: autoplace does not run retroactively — seed a site by script, or declare the mod **new-game only**? | New-game only is honest and cheap; a script seeding sites is a migration to maintain forever | Philippe | block 3 |
 | Q44 | **How many sites per surface**: a fixed number, a map-generation setting, or the autoplace controls? | A fixed number makes hubs scarce; the controls let the player decide how much economy he wants | Philippe | block 3 |
-| Q45 | **Who holds the money**: the company alone (which `0023` + `0024` force, and which makes a player an operator with no purse), or a virtual wallet per player — in which case something must pay into it, and no mechanism for that exists | The bank add-on and the activity rule of `0008` only have a subject if a player holds credits | Philippe | block 3 |
+| ~~Q45~~ | ~~Who holds the money?~~ → **a cooperative shared by all players + one account per company + the federation; no per-player wallet** (D42) | — | Philippe | **settled 2026-10-25, ADR 0026** |
+| Q46 | **How much is reserved?** A percentage of the payout, or a per-item amount in the price table? | A percentage scales with the contract; a per-item value makes a cheap contract punitive and an expensive one free | Philippe | block 3 |
+| Q47 | **Coverage**: may a contract be accepted when the cooperative cannot cover the reservation? | No: a broke cooperative cannot work at all. Yes: the hold is partial and the penalty becomes symbolic | Philippe | block 3 |
 | Q32 | Moving credits between **two companies**: item conversion only, or a transfer between counters with a fee? | Free transfers: no reason to hold money anywhere; for-pay only: tedious for a legitimate player | Philippe | block 4 |
 | Q09 | Exact publishing procedure on `mods.factorio.com` (upload, moderation, delay) | `[to verify]` — no credible release date without it | cadrage (research) | block 7 |
 

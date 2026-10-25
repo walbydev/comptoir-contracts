@@ -9,8 +9,9 @@ technologies without research.
 ## v1 (ADR 0025)
 
 **One mod.** One hub = one company carrying its own inventory. **One contract kind**: one-off with a
-deadline, one to three active. **One shop.** Company balances only — **no physical currency, no player
-wallet**. Three tiers. Minimum distance between hubs.
+deadline, one to three active, **escrowed on acceptance**. **One shop.** **One cooperative account for
+all players plus one account per company** — no physical currency, no player wallet. Three tiers.
+Minimum distance between hubs.
 
 Everything else is **parked as evolution**, written in `adr/` and out of v1: the bank and its interest,
 bounties, the printing right, recurring and decaying contracts, debt and resale, dedicated hub sites,
@@ -55,17 +56,19 @@ core never knows its add-ons: the dependency arrow points one way only — ADR 0
 | Hub | **one hub = one elevator = one spaceport = one company**, with a bank counter; **several hubs**, on any surface, spaced apart | ADR 0014 |
 | Currency | the credit is the **only** value common to every company: prices differ, the unit does not | ADR 0014 |
 | Issuer | **the colonial federation issues** (its negative balance is the money supply); companies operate with their own books and can go dry | ADR 0015 |
-| Solvency | one startup dial sets each company's credit line: **poor** (0) / **rich** (default) / **unlimited** (sandbox) | ADR 0015 |
+| Solvency | **one cooperative account for all players**, one account per company, one federation; no player wallet | ADR 0026 |
+| Contracts | escrowed on acceptance: expired means the reserved amount goes to the company | ADR 0027 |
 | Prices | **one** price table for the whole set | §1.1 D30 |
 | Delivery | **the hub is its own warehouse** — one inventory, no second building, **1–3 active contracts** | ADR 0016 |
-| Contracts | three kinds: **one-off**, **recurring at a fixed price**, **recurring at a decaying price** (logarithmic decay, tier-anchored, floored per item) | ADR 0019, 0020 |
+| Contract kinds | three kinds: **one-off**, **recurring at a fixed price**, **recurring at a decaying price** — *v1 keeps the one-off only* | ADR 0019, 0020 |
 | Companies | a company has a **character**: what it wants + how it pays, one kind of contract at a time, stated in one line | ADR 0022 |
 | Printing | **parked** — the research raises the credit line one step up the dial | ADR 0017 (parked) |
 | Failure | **parked** — a company in default loses its contracts and is resold | ADR 0018 (parked) |
 
-Still open, and the only ones that block v1: what an expired contract costs (Q08), the price band
-(Q18), dispatch and what happens to goods when the hub dies (Q24), I2 rewritten for three contracts
-(Q35), one stock shared by three contracts (Q36), and who holds the money (Q45).
+Still open, and the only ones that block v1: the price band (Q18), dispatch and what happens to goods
+when the hub dies (Q24), I2 rewritten for three contracts (Q35), one stock shared by three contracts
+(Q36), how much the escrow reserves (Q46), and whether a contract can be accepted without covering it
+(Q47).
 
 ## Test chain
 
