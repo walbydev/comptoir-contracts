@@ -64,6 +64,10 @@ is visible, and a player who sees it stops looking for an arbitrage that does no
 
 ## 4. States of the whole window
 
+The elevator adds three (ADR 0043), and they are visible in the **header**, next to the company line:
+`● elevator down` / `▲ away · 1:12` / `▼ returning`. The send button is disabled whenever the car is not
+down, with the remaining time on the button itself (A29).
+
 | State | What the window shows |
 |---|---|
 | **unpowered** | every action disabled, one line: *no power, counter closed* (D49) |

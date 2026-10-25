@@ -111,8 +111,10 @@ All three numbers are arbitrated — **scale 10, escrow 20 %, endowment 3 000** 
 refill is immediate, with no timer (ADR 0035). What a first contract looks like with these numbers:
 
 ```
-208 iron plates    pays 2 496    reserves 500    deadline 5 min 33 at two furnaces
+208 iron plates    pays 2 496    reserves 500    deadline 7 min 33
 ```
 
 That is the whole loop in one line: cheap to accept, quick to deliver, and worth roughly a third of the
-endowment. The economy has no free parameter left except the shapes of the UI, which is block 6.
+endowment. The 7 min 33 is **5 min 33 of production plus the 2-minute elevator round trip** (ADR 0043) —
+the cycle is part of every deadline, and forgetting it would generate contracts that expire in the air.
+The economy has no free parameter left except the shapes of the UI, which is block 6.

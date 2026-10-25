@@ -1,7 +1,7 @@
 # Framing — Company contracts (Factorio 2.1 mod set)
 
 > Version: 0.3 · Date: 2026-10-25 · Requested by: Philippe Ryf
-> Status: **blocks 1–9 CLOSED** (2026-10-25) — 73 decisions recorded (4 withdrawn), 42 ADRs, 28
+> Status: **blocks 1–9 CLOSED** (2026-10-25) — 74 decisions recorded (4 withdrawn), 43 ADRs, 30
 > acceptance criteria, **no question left blocking v1**, 15 parked with their features.
 > Repository: `walbydev/comptoir-contracts` (public GitHub, MIT) — created and verified 2026-10-25.
 > No development before tag `v0.1-cadrage`.
@@ -159,7 +159,7 @@ onto what already exists.
 | D55 | v1 catalogue | The counter sells **materials only, no buildings**: 16 items from copper cable to processing unit, priced from the game's recipes (`docs/05-price-table.md`) | ADR `0032`, `tools/cost_table.py` |
 | D56 | Counter placement | The counter is **built before oil**: its recipe contains **no oil-derived item**, one technology with red and green science, about 600 raw units | ADR `0033` |
 | D57 | Tiers | A tier is **not a padlock**: it is read from the item's **oil-chain depth** (no fluid → 1, one oil step → 2, a chain → 3), so the "three tiers" of `0025` become a commercial band. The real gate is the player's research | ADR `0034` |
-| D58 | Contract generation | Pool = catalogue ∩ research unlocked ∩ tier; weighted pick by the company's character; quantity from a payout band; deadline = `max(10 min, qty × machine_seconds / 2)`; **seeded RNG per company**, never `math.random` | ADR `0034` |
+| D58 | Contract generation | Pool = catalogue ∩ research unlocked ∩ tier; weighted pick by the company's character; quantity from a payout band; deadline = `max(10 min, qty × machine_seconds / 2) + elevator_cycle`; **seeded RNG per company**, never `math.random` | ADR `0034`, `0043` |
 | D59 | Refill | **Immediate**: a slot refills as soon as its contract is completed or expires. No timer, no clock, therefore no `on_tick` | ADR `0035` |
 | D60 | Balancing numbers | Scale **10** credits per raw unit · escrow **20 %** of the payout · endowment **3 000** credits issued once to the cooperative | ADR `0036` |
 | D61 | Window | **Two tabs** (*Contracts*, *Counter*) in one window, with a **permanent header**: company, character line, and two numbers — `available` and `reserved` | ADR `0037`, `docs/06-interface.md` |
@@ -173,6 +173,7 @@ onto what already exists.
 | D69 | Per-force economy | Companies, cooperative, contracts and stock are **owned by a force**: each force has its own ledger, its own research-filtered catalogue, and nothing crosses a force boundary | ADR `0041` |
 | D70 | Test harness | In-game assertions live in a **separate mod `comptoir-test`, never packaged**. Three layers: L1 static (no game launch), L2 headless behaviour, L3 by eye. `make accept` prints the L3 rows as `UNVERIFIED` and exits non-zero until they are recorded | ADR `0042`, `docs/09-tests.md` |
 | D71 | CI | GitHub Actions does **packaging, archive hygiene, price-table reproducibility** — the three things it can really do. Gameplay tests run here, before each release; CI never pretends to run Factorio | ADR `0042` |
+| D72 | Elevator cycle | The elevator leaves and returns: `down → rising → away → descending → down`, **one dispatch at a time per hub**, cycle **2 min** (one number in the data file). **Only `down` may send**; goods leave with the car; the contract is paid **on return** | ADR `0043` |
 
 ### 1.2 Success indicators (observable) — **accepted by Philippe on 2026-10-25**
 
@@ -322,6 +323,8 @@ API for third-party mods beyond the add-on interface, final art.
 | A26 | A fresh save contains **no player name and no player id** anywhere in `storage` |
 | A27 | Loading a save **with the mod removed** produces the engine's own warning and no crash from `on_load` / `on_configuration_changed` |
 | A28 | On a two-force map, a contract completed by force A leaves force B's cooperative balance and company records **byte-identical** — compared before and after |
+| A29 | **Only `down` may send**: in every other state the send button is disabled and no script path can dispatch |
+| A30 | A generated deadline is always **≥ the round trip + the production time** it implies, so no contract can be impossible on arrival |
 
 ---
 
@@ -513,6 +516,7 @@ resolved with its feature, not before.
 | ~~Q54~~ | ~~Deadline display?~~ → **digits and bar** (D62, ADR `0038`) | — | Philippe | **settled 2026-10-25** |
 | ~~Q55~~ | ~~Quantity control?~~ → **a field with presets** `1/10/100/stack`, one shared value (D63, ADR `0038`) | — | Philippe | **settled 2026-10-25** |
 | ~~Q56~~ | ~~Per-force economy?~~ → **separate per force** (D69, ADR `0041`): each force has its own ledger, contracts and stock; nothing crosses a force boundary | — | Philippe | **settled 2026-10-25** |
+| Q57 | **The elevator car**: route A (a state swap between three sprites, no per-tick work) or route B (a rendered sprite that actually travels, with an `on_tick` active only during the animation)? | B is what was described and what Satisfactory does; it needs a half-hour spike before it enters the plan | Philippe | block 10 |
 
 ---
 
