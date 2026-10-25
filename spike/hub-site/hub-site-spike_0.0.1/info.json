@@ -1,0 +1,8 @@
+{
+  "name": "hub-site-spike",
+  "version": "0.0.1",
+  "title": "hub site spike",
+  "author": "walby",
+  "factorio_version": "2.1",
+  "description": "Throwaway spike: can a non-mining-drill entity be restricted to a dedicated resource zone?"
+}

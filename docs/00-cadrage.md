@@ -1,7 +1,7 @@
 # Framing — Company contracts (Factorio 2.1 mod set)
 
 > Version: 0.3 · Date: 2026-10-25 · Requested by: Philippe Ryf
-> Status: **blocks 1–3 consolidated** — 38 decisions recorded, 19 questions still open.
+> Status: **blocks 1–3 consolidated** — 40 decisions recorded, 21 questions still open.
 > Repository: `walbydev/factorio-contrats` (public GitHub, MIT) — created and verified 2026-10-25.
 > No development before tag `v0.1-cadrage`.
 
@@ -137,6 +137,8 @@ onto what already exists.
 | D34 | Printing | The research raises **one step up the dial**, for the company that holds it, permanently. One research, one step | ADR `0017` |
 | D35 | Contract kinds | Every contract carries a `kind`: **one-off** (once, with a deadline), **recurring at a fixed price**, **recurring at a decaying price** (`payout_decay`, distinct from the conversion rate of D9). One structure, one generator, one GUI | ADR `0019` |
 | D36 | Decay | **Logarithmic**, anchored on the tier, floored at a **minimum price per delivered item** read from the price table; the contract stops being offered at its floor, and the number of occurrences is **derived**, never configured | ADR `0020` |
+| D37 | Company character | A company's catalogue is **homogeneous in kind** (Q41 = reading A) and its identity is the pair **what it wants + how it pays**, displayed on the tooltip and the contract list, with a colour and an icon. The kind changes at most once per tier | ADR `0022` |
+| D38 | Hub sites | *(proposed, awaiting confirmation)* Hubs are built on **dedicated, generated sites** instead of being spaced by a minimum distance; the site is a visible, unmineable resource patch and the check is a build-time script test with refund — the same cost the distance rule already carried | ADR `0021` |
 
 ### 1.2 Success indicators (observable) — **accepted by Philippe on 2026-10-25**
 
@@ -255,10 +257,10 @@ API for third-party mods beyond the add-on interface, final art.
 | A6 | No Lua error on load, no desync in a two-player headless session performing conversions and dispatches in the same tick |
 | A7 | A contract generated on an acquired technology is always completable with what the player already produces (checked by the generator, not by hand) |
 | A8 | Each add-on installs, runs and is **removed** without breaking an existing save |
-| A9 | Two hubs on the same surface are refused below the minimum distance, **with a message and without losing the item**; two hubs on the same surface offer **different** contract sets |
+| A9 | Two hubs on the same surface are refused **below the minimum distance, or off-site if D38 is adopted**, with a message and without losing the item; two hubs on the same surface offer **different** contract sets (different kinds) |
 | A10 | The conservation invariant is asserted in `poor` and `rich`; in `unlimited` the game **says** it is a sandbox and the harness asserts only that nothing crashes |
 | A11 | A company driven to default **loses its contracts, issues none, and is resold**; the resale hands the building to a different company and the dead company's debt stays with it (headless assertion) |
-| A12 | The catalogue contains the kinds allowed by Q41; a `recurring_decaying` payout is **strictly lower at each occurrence, logarithmically**, and stops being offered at its per-item floor; the GUI shows the kind and the **next** payout before acceptance |
+| A12 | A company's contract list contains **the single kind of that company**, and the kind is displayed; across two companies on the same surface the kinds **differ**; a `recurring_decaying` payout is **strictly lower at each occurrence, logarithmically**, and stops being offered at its per-item floor; the GUI shows the **next** payout before acceptance |
 
 ---
 
@@ -394,7 +396,10 @@ not weeks.
 | Q38-ter | Is the per-item floor **below** the local production cost (the contract dies by itself in the player's interest) or **above** it (a thin margin, farmable forever)? | Above: the decaying kind never ends, and `0019`'s purpose is lost | Philippe | block 3 |
 | ~~Q39~~ | ~~Does a recurring contract hold a slot?~~ → **answered as "one contract kind at a time", which is ambiguous — see Q41** | — | Philippe | **reformulated 2026-10-25** |
 | ~~Q40~~ | ~~Decay shape?~~ → **logarithmic, anchored on the tier, floored per delivered item** (D36) | — | Philippe | **settled 2026-10-25, ADR 0020** |
-| Q41 | **"One contract kind at a time"**: (A) a **homogeneous catalogue** — the company offers a single kind, and the kind changes when the catalogue is regenerated; or (B) **at most one contract of each kind** among the three slots? | A: companies get a mood, and A12 is wrong. B: the slots map onto the kinds, and a recurring contract does hold a slot | Philippe | block 3 |
+| ~~Q41~~ | ~~"One contract kind at a time"~~ → **reading A: the catalogue of a company is homogeneous in kind**; character = what it wants + how it pays, with stability, colour, icon and one-line display (D37) | — | Philippe | **settled 2026-10-25, ADR 0022** |
+| Q42 | **A guaranteed hub site near the spawn**: nothing in 2.1's data guarantees a patch in the starting area, and a fresh save with no site shows no hub at all | The mod would be invisible during the whole 2-hour horizon (A1) | Philippe | block 3 |
+| Q43 | **Existing saves**: autoplace does not run retroactively — seed a site by script, or declare the mod **new-game only**? | New-game only is honest and cheap; a script seeding sites is a migration to maintain forever | Philippe | block 3 |
+| Q44 | **How many sites per surface**: a fixed number, a map-generation setting, or the autoplace controls? | A fixed number makes hubs scarce; the controls let the player decide how much economy he wants | Philippe | block 3 |
 | Q32 | Moving credits between **two companies**: item conversion only, or a transfer between counters with a fee? | Free transfers: no reason to hold money anywhere; for-pay only: tedious for a legitimate player | Philippe | block 4 |
 | Q09 | Exact publishing procedure on `mods.factorio.com` (upload, moderation, delay) | `[to verify]` — no credible release date without it | cadrage (research) | block 7 |
 

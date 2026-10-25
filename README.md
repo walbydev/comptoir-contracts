@@ -6,7 +6,7 @@ technologies without research.
 
 > Guiding rule: **the hub complements local production, it never replaces it.**
 
-**State: framing in progress (blocks 1–3 consolidated, 38 decisions, 19 questions open).** This
+**State: framing in progress (blocks 1–3 consolidated, 40 decisions, 21 questions open).** This
 repository holds the project definition, not code yet. No development before tag `v0.1-cadrage`.
 
 | Document | Purpose |
@@ -48,6 +48,7 @@ core never knows its add-ons: the dependency arrow points one way only — ADR 0
 | Prices | **one** price table for the whole set | §1.1 D30 |
 | Delivery | **the hub is its own warehouse** — one inventory, no second building, **1–3 active contracts** | ADR 0016 |
 | Contracts | three kinds: **one-off**, **recurring at a fixed price**, **recurring at a decaying price** (logarithmic decay, tier-anchored, floored per item) | ADR 0019, 0020 |
+| Companies | a company has a **character**: what it wants + how it pays, one kind of contract at a time, stated in one line | ADR 0022 |
 | Printing | the research raises the credit line **one step up the dial** | ADR 0017 |
 | Failure | a company in default **loses its contracts and is resold**; the debt lands on the federation | ADR 0018 |
 
