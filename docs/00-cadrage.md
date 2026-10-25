@@ -2,7 +2,7 @@
 
 > Version: 1.0 · Date: 2026-10-25 · Requested by: Philippe Ryf
 > Status: **all ten blocks CLOSED** (2026-10-25) — **68 decisions in force**, 11 withdrawn
-> (Appendix C), 51 ADRs (33 in force), 31 acceptance criteria, **no question left blocking v1**,
+> (Appendix C), 52 ADRs (34 in force), 31 acceptance criteria, **no question left blocking v1**,
 > 12 open questions, all belonging to parked features.
 > Repository: `walbydev/comptoir-contracts` (public GitHub, MIT) — created and verified 2026-10-25.
 > No development before tag `v0.1-cadrage`.
@@ -146,7 +146,7 @@ onto what already exists.
 | D52 | Energy role | An entity's energy source is **fixed by prototype**: a hub cannot become a producer. Orbital power therefore needs a **second prototype** (a receiver), which is a second loop | ADR `0031` |
 | D53 | Orbital power | **Parked as evolution.** When it returns: one receiver prototype, one up-going order type, one technology — and the failure mode of a lost shipment. Not v1 | ADR `0030`, `0031` |
 | D54 | Counter spread | The counter **sells at cost × 1.5 and buys at cost**. The 50 % spread is its margin and the price of the safety valve. No pair of operations is profitable in both directions, so no arbitrage exists | ADR `0032` |
-| D55 | v1 catalogue | The counter sells **materials only, no buildings**: 16 items from copper cable to processing unit, priced from the game's recipes (`docs/05-price-table.md`) | ADR `0032`, `tools/cost_table.py` |
+| D55 | v1 catalogue | The counter sells **materials only, no buildings**: 16 items from copper cable to processing unit, priced from the game's recipes (`docs/05-price-table.md`) — **16 becomes 15**: `pipe` leaves, because base 2.1.23 names it only under `[entity-name]` and the shop row cannot be named (ADR `0052`) | ADR `0032`, `0052`, `tools/cost_table.py` |
 | D56 | Counter placement | The counter is **built before oil**: its recipe contains **no oil-derived item**, one technology with red and green science, about 600 raw units | ADR `0033` |
 | D57 | Tiers | A tier is **not a padlock**: it is read from the item's **oil-chain depth** (no fluid → 1, one oil step → 2, a chain → 3), so the "three tiers" of `0025` become a commercial band. The real gate is the player's research | ADR `0034` |
 | D58 | Contract generation | Pool = catalogue ∩ research unlocked ∩ tier; weighted pick by the company's character; **quantity derived from the tier's payout target, floor 1 unit** (D76); deadline = `max(4 min, qty × chain_seconds / 2 × 1.5) + elevator_cycle`, where `chain_seconds` is the whole recipe tree and not the last machine (D77); **seeded RNG per company**, never `math.random` | ADR `0034`, `0043`, `0047`, `0048` |
