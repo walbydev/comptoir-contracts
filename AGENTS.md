@@ -50,3 +50,9 @@ as a headless load failure. Do not claim a syntax check passed without quoting t
 Lua syntax check green **with the real command output quoted**; the card's acceptance criteria each
 proven by a command output, a log line or a measurement; the framing updated through a new ADR when a
 convention changes. "It works in my game" is not evidence.
+
+## The one language exception
+
+`docs/reader/` holds **reader digests written for the requester in his own language** (French), with
+their rendered PDF. They summarise decisions taken elsewhere and are never a source of truth: the ADRs
+and the master framing are. Everything else in this repository stays English.
