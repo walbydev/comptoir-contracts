@@ -1,0 +1,14 @@
+-- data.lua — prototype stage entry point.
+--
+-- Description: every prototype of the mod is created through the files required here. Nothing
+--              else happens in this file: a prototype error is a load failure for every player,
+--              so the smallest possible surface belongs here.
+-- Author:      Philippe Ryf
+-- Created:     2026-10-25
+-- Revisions:   2026-10-25 — skeleton (lot a, task a1)
+-- Usages:      loaded once by the game at the data stage; never at runtime.
+-- Notes:       `data/` and `scripts/` never mix (docs/arborescence.md): this file and the files it
+--              requires run before any save exists, and must stay free of runtime state.
+-- Licence:     MIT (see LICENSE)
+
+-- Prototype files are required as the lot grows; task a1 ships no prototype yet.

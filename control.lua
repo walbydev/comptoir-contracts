@@ -1,0 +1,15 @@
+-- control.lua — event wiring only.
+--
+-- Description: the mod's runtime entry point. Each `script.on_*` handler forwards to one function
+--              of one module; this file holds no decision and no state of its own.
+-- Author:      Philippe Ryf
+-- Created:     2026-10-25
+-- Revisions:   2026-10-25 — skeleton (lot a, task a1)
+-- Usages:      loaded by the game when a save starts or loads, once per mod.
+-- Notes:       `require` is allowed at this file's top level only — measured on 2.1.23 build 87750:
+--              calling it later (inside an event handler) fails with "Require can't be used outside
+--              of control.lua parsing". There is no `on_tick` in this mod by design (ADR 0035).
+-- Licence:     MIT (see LICENSE)
+
+-- Handlers are wired as the modules land; task a1 ships the file so the control stage is proven to
+-- run. Storage initialisation and the migration chain arrive with task a3, through scripts/migrate.

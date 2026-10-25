@@ -120,15 +120,15 @@ onto what already exists.
 | D16 | Money source | **One treasury funds every credit payout** — contracts, bounties, interest. *Revised by D26*: one treasury **per company** | ADR `0009`, `0014` |
 | D17 | Contract mix | **Most contracts on already-acquired technologies**; a minority are "motivation" contracts requiring the next tier | §3 |
 | D18 | AFK signal | **Production**, not movement — *still open*: attribution in a shared multiplayer factory (Q19-bis) | ADR `0008` |
-| D19 | Bank structure | **One bank** holding the accounts of players, companies, the colonial federation and the bank itself — *revised by `0014`: one unit and one issuer, N books; who issues is Q30* | ADR `0011`, `0014` |
+| D19 | Bank structure | **One bank** holding the accounts of players, companies, the colonial federation and the bank itself — *revised by `0014`: one unit and one issuer, N books* — **corrected 2026-10-25 by D42/`0026`: the player accounts disappear, one cooperative replaces them** | ADR `0011`, `0014`, `0026` |
 | D20 | Printing right | **Printing credits is a right obtained by research** — *blocked*: creation or materialisation (Q25) | ADR `0012` |
 | D21 | Delivery chain | **Hub + space elevator = the interface with the spaceport**; dedicated **cargo warehouses bound 1:1 to a contract**, fed by inserter **or** logistics robot | ADR `0010` |
-| D22 | Dispatch and loss | Manual send or automatic on quantities reached; goods on expiry / destruction — *open* (Q24) | ADR `0010` |
-| D23 | Packaging | **A set: one core mod + optional add-ons** (`company-contracts`, `-bank`, `-bounties`, `-mint`) | ADR `0013` |
-| D24 | Add-on rule | Add-ons add **behaviour, not prototypes**, so they stay removable from a save | ADR `0013` |
+| D22 | Dispatch and loss | **Manual, contract by contract**; goods inside a destroyed hub are lost — **settled 2026-10-25** (Q24 → D44) | ADR `0010`, D44 |
+| D23 | Packaging | ~~**A set: one core mod + optional add-ons** (`company-contracts`, `-bank`, `-bounties`, `-mint`)~~ → **superseded 2026-10-25 by D41 (v1 = one mod) and renamed by D50 (`comptoir-*`)**. Kept as the record of the intention | ADR `0013`, `0025`, `0029` |
+| D24 | Add-on rule | Add-ons add **behaviour, not prototypes**, so they stay removable from a save — **applies only when add-ons return** | ADR `0013` |
 | D25 | Hub = company | **One hub = one space elevator = one spaceport = one company** that offers contracts **and** holds a bank counter; **several hubs**, on any surface, spaced apart | ADR `0014` |
 | D26 | Common element | **The credit is the only value common to every company** — no scrip, no company-bound item; prices differ, the unit does not. One treasury **per holder** | ADR `0014` |
-| D27 | Company accounts | Accounts are keyed by **holder and company**; a player's money sits *at* a company, so "where is my money" is a real question | ADR `0014` |
+| D27 | Company accounts | ~~Accounts are keyed by **holder and company**; a player's money sits *at* a company, so "where is my money" is a real question~~ → **replaced 2026-10-25 by D42 (`0026`): three kinds of holder — the cooperative, the companies, the federation. There is no player money, and the "where is my money" question no longer exists: it is in the cooperative or it is nowhere** | ADR `0014`, `0026` |
 | D28 | Issuer | **The colonial federation is the only issuer** (reading C); its account may go negative, and that is the money supply. Companies are operators with their own books; interest and bounties they pay are **debt**, not creation | ADR `0015` |
 | D29 | Solvency dial | A company can be **dry**. One startup dial sets its credit line: **poor** (0) / **rich** (default) / **unlimited** (sandbox, I1–I2 void). The numbers live in the data file | ADR `0015` |
 | D30 | Price table | **One price table** for the whole set; a company may differ by a bounded coefficient and by its catalogue, never by a second table | §4, Q18 |
@@ -199,12 +199,15 @@ by Philippe on 2026-10-25** along with the whole set.
   (ADR 0005), and **both configurations are tested**. "Works in my setup" is not a claim.
 - No final artwork in v0.1: placeholders accepted, art pass later.
 - No replacement of research: no technology on the critical path can be bought at the hub.
-- Several hubs per surface are **in** (D25) and **spaced by a minimum distance**; **multi-force is out** in v1.
+- Several hubs per surface are **in** (D25) and **spaced by a minimum distance** (D21/`0025`).
 - ~~No credit-item in the MVP~~ — reversed 2026-10-25 (ADR `0004`), then **re-reversed the same day**:
   there is **no physical currency at all** (`0023`). What stays forbidden: **creating credits outside
   the declared channel** — the issuer's initial endowment and nothing else.
-- **No player wallet in v1** (D39, D40): credits belong to companies. The bank, its deposits and its
-  interest are parked (`0025`).
+- **No player wallet in v1** (D39, D40): credits belong to **the cooperative and to the companies** (D42).
+  The bank, its deposits and its interest are parked (`0025`).
+- **Multi-force is handled, not forbidden** (D69): each force owns its ledger, so a PvP map works and
+  two sides cannot feed each other. This line said "out" until 2026-10-25, when per-force storage
+  replaced that prohibition.
 
 ---
 
@@ -257,13 +260,14 @@ contract expires or it does not, but **nothing runs while the game is closed**. 
 By block 3 the mechanism list read: hub/elevator, spaceport, cargo warehouses, logistics insertion,
 two contract flavours, a shop, curated technologies, a credit-item, two-way conversion with a tiered
 fee, a bank with four account holders, interest, bounties, a printing right, a tier model, two DLC
-configurations. **That is not one mod, that is three** — so the packaging decision (D23) is what makes
-the scope survivable.
+configurations. **That is not one mod, that is three** — so the packaging idea (D23) was what made the
+scope survivable at the time; `0025` then took the other road and cut the set to one mod, and `0029`
+renamed the family `comptoir-*`.
 
 **`0025` then cut it.** v1 is **one mod**: the four-mod set is parked, and the list above is kept here
 as the record of what was on the table and what was set aside.
 
-### 3.2 Core: `company-contracts`
+### 3.2 Core: `comptoir-contracts`
 
 Hub + space elevator, spaceport, **the hub's own inventory** (fed by inserter or logistics robot), the contract generator (one to three active contracts, current-tier majority + motivation minority, deadline expiry), **one-off contracts only**, credits as **one cooperative account plus one per company** (no item, no conversion), the **escrow on acceptance**, the shop with its single price table, and three progression tiers.
 
@@ -278,6 +282,10 @@ treasury and its own counter. The model is keyed by company from the first line 
 hub for v1, several later" model would be a rewrite, not a setting.
 
 ### 3.3 Add-ons — behaviour only, no prototypes (D24)
+
+**Parked since `0025`.** Everything below is the record of the intention. The names were
+`company-contracts-*` and are `comptoir-*` since `0029` (`comptoir-bank`, `comptoir-bounties`,
+`comptoir-mint`, and `comptoir-freight` for the orbital power of `0030`).
 
 | Mod | Adds | Why it is separate |
 |---|---|---|

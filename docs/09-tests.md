@@ -22,8 +22,11 @@ forty.
 
 - It is **never packaged**: `make package` copies an explicit file list, and the test mod is not on it.
   A28-style omissions are caught by the L1 archive scan, including the test mod's name.
-- It holds every in-game assertion, so the shipped mod contains **zero test code** — no dead branches, no
-  hidden setting, nothing a player can trip over.
+- It holds every in-game assertion, so the shipped mod contains **no test code** — no assertions, no dead
+  branches, no hidden setting. **Nuance added 2026-10-25 (D74)**: a separate mod cannot read another
+  mod's `storage`, so the shipped mod *does* expose one small remote interface (`snapshot`, `act`,
+  `api_version`). That is an API, not a test, and `comptoir-freight` will need it anyway; it grants
+  nothing the console does not already grant.
 - It exposes one remote interface and writes its verdicts with
   **`helpers.write_file("test-results.json", ...)`**, which the runner reads back. **`game.write_file`
   does not exist in 2.1.23** — measured 2026-10-25 the hard way, in `spike/fedora-smoke/`. The game is
