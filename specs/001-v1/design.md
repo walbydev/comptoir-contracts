@@ -80,7 +80,7 @@ Three deliberate choices:
 | `on_gui_text_changed` | quantity field only, clamped |
 | `on_gui_elem_changed` | presets set the field, they do not act |
 
-**No `on_tick`.** This is the performance budget: an idle hub costs zero ticks, a busy one costs a handful
+**No unbounded `on_tick` (the window's countdown is the exception, bounded by the window's lifetime — ADR 0056).** This is the performance budget: an idle hub costs zero ticks, a busy one costs a handful
 of GUI events. The consequence is accepted in `0035`: the elevator's return and a contract's expiry are
 **lazy**, applied on the next read, never on a clock.
 

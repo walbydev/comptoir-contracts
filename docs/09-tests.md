@@ -74,6 +74,10 @@ prevent.
 | A29 | only `down` sends — in every other state the send button is disabled and no script path dispatches | elevator forced through its four states via `act`; a send attempt in each of the three non-down states must be refused, and the stock untouched | L2 | cadrage |
 | A30 | a generated deadline is always ≥ the round trip + the production it implies | 1 000 generations: `deadline_ticks ≥ cycle + max(4 min, qty × seconds / 2 × 1.5)` for every one | L2 | cadrage |
 | A31 | never more than three live contracts | refill after each action; attempt a crafted fourth through `act` → `no_free_slot`; settle one → exactly one new offer | L2 | cadrage |
+| B2-pause | every action is refused while the car is not down | each of accept / buy / sell attempted in the three non-down states, refused with the reason | L2 | cadrage |
+| B3-feedback | an action writes one line with quantity and amount | buy 10, read the line back, assert quantity and total | L2 | cadrage |
+| B4-clock | the countdown stops when the last window closes | open then close, run 200 ticks, assert no handler ran | L2 | cadrage |
+| B5-sprite | the artwork matches the prototype | `make check-artwork`: 288x288 RGBA, 9 tiles, boxes ±4.5, scale 1, packaged | L1 | cadrage |
 | A4 | — | **withdrawn** (no conversion exists) | — | — |
 | A8 | add-ons install, run, and are removed cleanly | **out of v1**: no add-on exists. Returns with the first add-on | — | — |
 | A11 | bankruptcy is terminal, the company is resold | **out of v1**: parked (`0018`) | — | — |

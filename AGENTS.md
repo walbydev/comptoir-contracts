@@ -16,7 +16,7 @@ frozen inputs and are never edited.
 make check     # L1 static gate: Lua syntax over every .lua file (luac -p) + locale keys
                # (tools/check_locale.py: a reference with no string, a string nobody prints, a
                # key name that is not [a-z0-9-]+)
-make test      # headless Factorio scenario run (arrives with the first code)
+make test      # headless scenarios in both DLC configurations
 make package   # build comptoir-contracts_<version>.zip — name format is mandatory
 ```
 

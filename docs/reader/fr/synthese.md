@@ -106,7 +106,7 @@ couleur alerte · les quantités sont un **champ avec quatre raccourcis** qui é
 
 # 7. Ce qu'il faut savoir techniquement
 
-- **Langage** : Lua 5.2, API Factorio 2.1. Aucun `on_tick` : tout passe par des événements, et les
+- **Langage** : Lua 5.2, API Factorio 2.1. Aucun `on_tick` non borné — seul le compte à rebours de la fenêtre bat, et uniquement tant qu'elle est ouverte : tout passe par des événements, et les
   échéances sont évaluées à la lecture. Un comptoir inactif coûte zéro tick.
 - **État** : une seule table `storage`, versionnée dès la première publication, avec une chaîne de
   migration.

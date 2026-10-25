@@ -74,6 +74,19 @@ down, with the remaining time on the button itself (A29).
 | **no contract offerable** | the slot says *nothing available* — with the reason if it is research, because a silent empty slot reads as a bug |
 | **contract expired while the window is open** | the row turns red, the button becomes `ACCEPT` again after the next refill, and the reserve is already gone from the header |
 
+## 4bis. Three lines that were missing from the first build
+
+Added 2026-10-25, from the requester's first look (ADR 0056):
+
+- **The header carries the car**: `● elevator down` / `▲ rising` / `▲ away · 1:12` / `▼ returning`.
+  While it is not down, every action is disabled and the remaining time is written **on the button**.
+- **One feedback line under the tabs**, and only one: what was bought or sold, how many, for how much;
+  a refusal uses the same line with its reason. It stays until the next action replaces it. A player
+  who clicks twice must see that the first click worked.
+- **An inventory button in the header** hands the entity back to the engine (`player.opened = entity`,
+  ADR 0057), because suppressing the vanilla frame also suppressed access to the counter's stock.
+  Closing the vanilla frame returns to the game; clicking the counter reopens the window.
+
 ## 5. Rules that make it testable
 
 - **A19**: the header's two numbers always satisfy `available + reserved = total` for the cooperative.
