@@ -1,8 +1,8 @@
 # Framing — Company contracts (Factorio 2.1 mod)
 
 > Version: 0.2 · Date: 2026-10-25 · Requested by: Philippe Ryf
-> Status: **blocks 1–2 closed 2026-10-25** — Phase 0 done; decisions D1, D1-bis, D3, D5, D6, D7–D13
-> and the success indicators I1–I5 are settled by the requester. Block 3 (scope) next.
+> Status: **blocks 1–2 closed 2026-10-25; block 3 open** (decisions D1–D17 recorded, questions
+> Q04–Q05, Q08–Q09, Q15–Q22 awaiting the requester). Block 3 (scope) next.
 > Repository: `walbydev/factorio-contrats` (public GitHub, MIT) — created and verified 2026-10-25.
 > No development before tag `v0.1-cadrage`.
 
@@ -116,6 +116,10 @@ exchange loop** grafted onto what already exists.
 | D11 | Bank | **Deposit, withdraw, regular interest**; interest funded by the hub's own margin — the exact funding rule is an **open prerequisite (Q15)** | ADR `0007` |
 | D12 | Players | **Solo and multiplayer**; gifting exists **only via credit-items**, never a direct credit transfer | §2 |
 | D13 | Game horizon | **2 h speedrun to 100 h long game** — the economy scales by **progression tier**, not by wall-clock time | §2 |
+| D14 | Passive player | **No income without activity**: interest pauses when the player neither moves nor builds — *signal to settle*: production, not movement (Q19) | ADR `0008` |
+| D15 | Bounties | **Nests, worms and science packs pay escalating bonuses**; escalation anchored on tier, not evolution factor | ADR `0009` |
+| D16 | Money source | **One treasury funds every credit payout** — contracts, bounties, interest (proposal, Q20) | ADR `0009` |
+| D17 | Contract mix | **Most contracts on technologies the player already has**; a minority are "motivation" contracts requiring the next tier, so the player must research or buy forward | block 3 |
 
 ### 1.2 Success indicators (observable) — **accepted by Philippe on 2026-10-25**
 
@@ -259,6 +263,10 @@ scenarios with Lua assertions.
 | Q16 | Rate-improvement technologies: **researched normally** (proposal) or **bought at the hub**? | Bought: the hub funds its own discount — a self-financing loop | Philippe | block 3 |
 | Q17 | Does the catalogue scale by **progression tier** (proposal) or by time/random draw? | Time-based: a 2 h run sees one contract, a 100 h run rushes everything, and neither keeps I1/I2 | Philippe | block 3 |
 | Q18 | Where do the numbers come from: price table anchored on **production cost (raw + energy + time) × ≥ 1.5**, in integers? | Ad-hoc numbers: I1 is unmeasurable and the table gets rewritten three times | Philippe | block 3 |
+| Q19 | **AFK signal**: literal "does not move + does not build" (spoofed by a walking loop) or **production-based** (proposal)? And how is a shared multiplayer factory attributed to a player? | Wrong signal: either twitch farming, or a planning player is punished; ADR 0008 stays blocked | Philippe | block 3 |
+| Q20 | **One treasury** for every payout (contracts + bounties + interest), or separate faucets? | Separate faucets: any of them can mint credits, and I1 dies by the richest one | Philippe | block 3 |
+| Q21 | Escalation of bounties anchored on **tier** (proposal) rather than **evolution factor**? | Evolution: the optimal strategy is nest farming, which is exactly what the bounty pays for | Philippe | block 3 |
+| Q22 | Science-pack bounty: **per unit** (unbounded in a 100 h game) or **per milestone** — first *N* packs of each new tier then closed (proposal)? | Per unit: a large factory prints credits and the hub becomes decorative | Philippe | block 3 |
 | Q04 (D2) | Delivery to the hub by **physical insertion** or **rocket launch**? | Rocket: the silo enters the MVP, tracking and testing change | Philippe | block 3 |
 | Q05 (D4) | **A single hub** or several (per surface, per force)? | Several: multi-surface and multi-force from the MVP | Philippe | block 3 |
 | ~~Q06 (D5)~~ | ~~Space Age optional or a hard dependency?~~ → **plays with and without the DLC (D5)** | — | Philippe | **settled 2026-10-25, ADR 0005** |
