@@ -43,3 +43,22 @@ A 30-line throwaway mod, `spike/gui-probe/`, loaded beside the real mod:
 If our frame appears alone, R1 is closed and lot (b) proceeds as designed. If the vanilla frame
 stacks on top, `0045`'s option B (an assembling machine) comes back, and that is a redesign of the
 counter, not a detail of the window.
+
+## Closed — 2026-10-25, on the requester's client
+
+The probe was run on a graphical Factorio client with both mods enabled. The requester reports
+seeing the probe frame (its two labels and the `close` button) and **nothing behind it** — no
+vanilla inventory grid.
+
+That answers the question the spike could not:
+
+- `player.opened = nil` inside `on_gui_opened`, followed by a frame added to `player.gui.screen`,
+  **replaces** the container's own GUI rather than stacking on it.
+- Therefore the counter keeps its `container` prototype, `0045`'s option B stays rejected, and the
+  window is written on a foundation that has now been seen working.
+- R1 moves from "open, cannot be closed here" to **closed by observation**, which is the only kind
+  of proof available for a layer with no headless player.
+
+Residual uncertainty, stated: the check was visual and single-run. A regression in which the vanilla
+frame reappears would be caught only by the requester's eye, on the next build — which is exactly why
+the by-eye rows of `docs/09-tests.md` exist and why `make accept` refuses to go green without them.
