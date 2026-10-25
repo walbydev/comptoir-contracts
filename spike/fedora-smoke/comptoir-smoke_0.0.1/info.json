@@ -1,0 +1,8 @@
+{
+  "name": "comptoir-smoke",
+  "version": "0.0.1",
+  "title": "Comptoir smoke test",
+  "author": "Philippe Ryf",
+  "description": "Throwaway mod. Proves the whole chain works on a given machine: mod folder -> mod-list -> data.lua -> control.lua. Delete it.",
+  "factorio_version": "2.1"
+}

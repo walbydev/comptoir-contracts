@@ -33,6 +33,8 @@ as a headless load failure. Do not claim a syntax check passed without quoting t
 - **Never overwrite an existing prototype.** Reuse `rocket-silo`, `cargo-landing-pad`, `cargo-pod`;
   create new prototypes when behaviour differs.
 - **`storage`, never `global`** — `global` no longer exists since Factorio 2.0.
+- **`helpers.write_file`, never `game.write_file`** — the second was removed in 2.1.23 (measured
+  2026-10-25: `LuaGameScript doesn't contain key write_file`). The test harness depends on it.
 - **`recipe.categories`**, not `recipe.category`, in 2.1.
 - **`storage` carries a version number from the first release**, with a migration path. A published
   save is real user data.
