@@ -80,8 +80,10 @@ is visible, and a player who sees it stops looking for an arbitrage that does no
 - **A22**: an action button is never enabled when the action would fail (no coverage, no goods,
   no power).
 
-## 6. Still open
+## 6. Closed — both, in each case (ADR 0038)
 
-- **The deadline**: digits only, bar only, or both? (Currently specified as both.)
-- **Quantities in the counter**: a text field per row, or a `1 / 10 / 100 / stack` selector? A field is
-  precise and needs the keyboard; a selector is one click and covers 95 % of uses.
+- **The deadline**: digits **and** bar. The digits answer *do I have time*, the bar answers *am I in
+  trouble* — and the player reads one or the other depending on how fast he is moving.
+- **The quantity**: a **text field with four presets** (`1`, `10`, `100`, `stack`) sharing a single
+  value. A preset writes the field, it does not bypass it: one number on screen, and the player can
+  correct it to 37 when a contract asks for 208 and he wants the exact remainder.

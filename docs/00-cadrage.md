@@ -1,7 +1,7 @@
 # Framing — Company contracts (Factorio 2.1 mod set)
 
 > Version: 0.3 · Date: 2026-10-25 · Requested by: Philippe Ryf
-> Status: **blocks 1–5 CLOSED** (2026-10-25) — 63 decisions recorded (4 withdrawn), 37 ADRs, 22
+> Status: **blocks 1–6 CLOSED** (2026-10-25) — 65 decisions recorded (4 withdrawn), 38 ADRs, 24
 > acceptance criteria, **no question left blocking v1**, 15 parked with their features.
 > Repository: `walbydev/comptoir-contracts` (public GitHub, MIT) — created and verified 2026-10-25.
 > No development before tag `v0.1-cadrage`.
@@ -163,6 +163,8 @@ onto what already exists.
 | D59 | Refill | **Immediate**: a slot refills as soon as its contract is completed or expires. No timer, no clock, therefore no `on_tick` | ADR `0035` |
 | D60 | Balancing numbers | Scale **10** credits per raw unit · escrow **20 %** of the payout · endowment **3 000** credits issued once to the cooperative | ADR `0036` |
 | D61 | Window | **Two tabs** (*Contracts*, *Counter*) in one window, with a **permanent header**: company, character line, and two numbers — `available` and `reserved` | ADR `0037`, `docs/06-interface.md` |
+| D62 | Deadline display | **Digits `M:SS` and a bar**, both: the digits answer "do I have time", the bar answers "am I in trouble". Bar amber under 25 %, red under 10 %; the digits never change colour | ADR `0038` |
+| D63 | Quantity control | A **text field with four presets** (`1`, `10`, `100`, `stack`) sharing one value: a preset writes the field. Clamped to `[1, 2147]`, and clamped again to what the balance allows | ADR `0038` |
 
 ### 1.2 Success indicators (observable) — **accepted by Philippe on 2026-10-25**
 
@@ -306,6 +308,8 @@ API for third-party mods beyond the add-on interface, final art.
 | A20 | At 100 % and at 150 % GUI scale, **no text is truncated and no control falls outside the window** |
 | A21 | Every visible string exists in **both** `locale/en` and `locale/fr`; a missing key shows as the key itself and is a failure, not a fallback |
 | A22 | An action button is **never enabled when the action would fail** (no coverage, no goods in the hub, no power) |
+| A23 | The quantity field and the presets **never disagree**: a preset writes the field, and the action always acts on the displayed value |
+| A24 | No preset can exceed what the balance allows; a preset that would is **clamped and displays the clamped value before the click** |
 
 ---
 
@@ -494,8 +498,8 @@ resolved with its feature, not before.
 | ~~Q51~~ | ~~Three balancing numbers?~~ → **scale 10, escrow 20 %, endowment 3 000** (D60, ADR `0036`) | — | Philippe | **settled 2026-10-25** |
 | ~~Q52~~ | ~~The three tier thresholds~~ → **dissolved**: a tier is read from the item's oil-chain depth, not from a technology (D57). The counter itself is gated by one early red/green technology (D56) | — | Philippe | **settled 2026-10-25** |
 | ~~Q53~~ | ~~Cadence: immediate or timer?~~ → **immediate**, no timer, therefore no clock (D59, ADR `0035`) | — | Philippe | **settled 2026-10-25** |
-| Q54 | **Deadline display**: digits only (`5:33`), a bar only, or both? | Digits answer "do I have time", a bar answers "am I in trouble" — at a glance, and the player is often in a hurry | Philippe | block 6 |
-| Q55 | **Quantities in the counter**: a text field per row, or a `1 / 10 / 100 / stack` selector? | A field is precise but needs the keyboard; a selector is one click but cannot express 37 | Philippe | block 6 |
+| ~~Q54~~ | ~~Deadline display?~~ → **digits and bar** (D62, ADR `0038`) | — | Philippe | **settled 2026-10-25** |
+| ~~Q55~~ | ~~Quantity control?~~ → **a field with presets** `1/10/100/stack`, one shared value (D63, ADR `0038`) | — | Philippe | **settled 2026-10-25** |
 
 ---
 
