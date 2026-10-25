@@ -1,6 +1,6 @@
 # 0034 — Contracts are generated from research, never from a dice roll alone
 
-- **Status**: accepted 2026-10-25 — answers "comment génères-tu les contrats ?"
+- **State**: accepted
 - **Date**: 2026-10-25
 - **Block**: 5
 - **Refines**: `0022` (company character), `0025` (one contract kind in v1)

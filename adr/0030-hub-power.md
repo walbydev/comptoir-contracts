@@ -1,5 +1,7 @@
 # 0030 — The hub draws little power, and one day it could produce it
 
+- **State**: parked
+- **Superseded in part**: 0046 (the consumption clause; the orbital-production half is parked with `comptoir-freight`)
 - **Status**: accepted 2026-10-25 for the consumption; **the orbital production is submitted as a
   v1-or-evolution question (Q48)**
 - **Date**: 2026-10-25

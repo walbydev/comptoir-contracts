@@ -1,6 +1,6 @@
 # 0018 — Bankruptcy is terminal: the contracts go, the hub is resold
 
-- **Status**: accepted 2026-10-25 — **the resale terms are open (Q34)**
+- **State**: parked
 - **Date**: 2026-10-25
 - **Block**: 3
 - **Operationalises**: `0015` (dial and credit line), `0014` (company)

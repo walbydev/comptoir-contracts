@@ -1,6 +1,6 @@
 # 0003 — Public GitHub repository under `walbydev`, MIT licence
 
-- **Status**: accepted
+- **State**: accepted
 - **Date**: 2026-10-25
 - **Block**: 1
 - **Supersedes**: —

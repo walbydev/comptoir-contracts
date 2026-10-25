@@ -1,6 +1,6 @@
 # 0017 — The printing research raises the dial one step
 
-- **Status**: accepted 2026-10-25 — **completes `0012`** (Q25 = reading c)
+- **State**: parked
 - **Date**: 2026-10-25
 - **Block**: 3
 - **Supersedes**: nothing — it turns `0012` from a blocked question into a mechanism

@@ -1,6 +1,6 @@
 # 0024 — A contract belongs to the company, never to a player
 
-- **Status**: accepted 2026-10-25 — **supersedes the per-player account model of §2**
+- **State**: accepted
 - **Date**: 2026-10-25
 - **Block**: 3
 - **Extends**: `0014` (hub = company), `0016` (three contracts), `0023` (no physical currency)

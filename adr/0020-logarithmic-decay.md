@@ -1,6 +1,6 @@
 # 0020 — The decay is logarithmic, anchored on the tier, floored per delivered item
 
-- **Status**: accepted 2026-10-25 — **completes `0019`**; the abandon rule and the catalogue reading
+- **State**: parked
   are still open (Q38-bis, Q41)
 - **Date**: 2026-10-25
 - **Block**: 3

@@ -1,6 +1,6 @@
 # 0043 — The elevator is a physical cycle, and only leaves from the bottom
 
-- **Status**: accepted 2026-10-25 by the requester (Satisfactory-inspired dispatch cycle); the visual
+- **State**: accepted
   technique is **not yet measured** (see §5)
 - **Date**: 2026-10-25
 - **Block**: 10 (added mid-framing, after the summary)

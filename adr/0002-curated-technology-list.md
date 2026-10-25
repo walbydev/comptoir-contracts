@@ -1,6 +1,6 @@
 # 0002 — Purchasable technologies: a curated list, never the full tree
 
-- **Status**: accepted
+- **State**: parked
 - **Date**: 2026-10-25
 - **Block**: 1
 - **Supersedes**: —

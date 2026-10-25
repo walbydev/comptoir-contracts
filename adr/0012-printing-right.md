@@ -1,6 +1,6 @@
 # 0012 — Printing credits is a right obtained by research
 
-- **Status**: **completed by `0017`** (Q25 = reading c: the research raises the dial one step). Kept
+- **State**: parked
   for the record: the two readings and why the third option was chosen
 - **Date**: 2026-10-25
 - **Block**: 3

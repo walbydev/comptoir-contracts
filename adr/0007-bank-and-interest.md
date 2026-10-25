@@ -1,6 +1,6 @@
 # 0007 — A bank exists at the hub: deposits accrue interest
 
-- **Status**: accepted in principle — **the funding rule is an open prerequisite (Q15)**
+- **State**: parked
 - **Date**: 2026-10-25
 - **Block**: 2
 - **Supersedes**: —

@@ -1,6 +1,6 @@
 # 0009 — Bounties: nests, worms and science packs pay escalating bonuses
 
-- **Status**: accepted — **the funding source and the science-pack unit are open (Q20, Q22)**
+- **State**: parked
 - **Date**: 2026-10-25
 - **Block**: 3
 - **Supersedes**: —

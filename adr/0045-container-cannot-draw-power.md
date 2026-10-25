@@ -1,6 +1,6 @@
 # 0045 — A container cannot draw power: the counter's entity type has to move
 
-- **Status**: **proposed** 2026-10-25 — blocked on a GUI spike and on Q58
+- **State**: rejected
 - **Date**: 2026-10-25
 - **Reported by**: the coding agent, while implementing task a3
 - **Contradicts**: D31 / `0016` (the hub is a container) versus D49 / `0030` (the hub draws power)

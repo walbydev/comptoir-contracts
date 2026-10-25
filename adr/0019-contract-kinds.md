@@ -1,6 +1,6 @@
 # 0019 — Every contract carries a kind: one-off, recurring at a fixed price, recurring at a decaying price
 
-- **Status**: accepted 2026-10-25 — **the open parameters of this ADR are settled by `0020`** (floor,
+- **State**: parked
   curve, tier anchor); the abandon rule (Q38-bis) and the catalogue reading (Q41) remain open
 - **Date**: 2026-10-25
 - **Block**: 3

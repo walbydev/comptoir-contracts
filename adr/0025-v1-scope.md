@@ -1,6 +1,6 @@
 # 0025 — v1 scope: one mod, one hub, one contract kind, one shop
 
-- **Status**: **accepted in principle** 2026-10-25 (« Je veux simplifier le cadre de la v1. Je garde les
+- **State**: accepted
   autres idées pour évolution ») — the boundary below is submitted item by item for approval
 - **Date**: 2026-10-25
 - **Block**: 3

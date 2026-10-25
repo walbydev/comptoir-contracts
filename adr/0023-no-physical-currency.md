@@ -1,6 +1,6 @@
 # 0023 — No physical currency: credits exist only as balances
 
-- **Status**: accepted 2026-10-25 — **supersedes `0004`**; opens Q45 (who holds the money)
+- **State**: accepted
 - **Date**: 2026-10-25
 - **Block**: 3
 - **Supersedes**: `0004` (credit-item, two-way conversion at the hub)

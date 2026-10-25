@@ -1,6 +1,6 @@
 # 0022 — Companies have a character, and it must stay readable
 
-- **Status**: accepted 2026-10-25 — **settles Q41 = reading A**, with legibility constraints
+- **State**: accepted
 - **Date**: 2026-10-25
 - **Extends**: `0014` (hub = company), `0019` (contract kinds), `0016` (three contracts)
 

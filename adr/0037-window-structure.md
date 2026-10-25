@@ -1,6 +1,6 @@
 # 0037 — The counter window: two tabs, one permanent header
 
-- **Status**: accepted 2026-10-25 by the requester ("1 deux, 2 deux")
+- **State**: accepted
 - **Date**: 2026-10-25
 - **Block**: 6
 - **Depends on**: `0022` (character), `0034` (generation), `0036` (numbers)

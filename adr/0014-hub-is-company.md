@@ -1,6 +1,6 @@
 # 0014 — One hub is one company: several hubs, one currency
 
-- **Status**: accepted in principle by the requester (2026-10-25) — **who issues the unit (Q30)** and
+- **State**: accepted
   **can a company pay beyond its balance (Q31)** are open
 - **Date**: 2026-10-25
 - **Block**: 3

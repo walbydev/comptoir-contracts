@@ -1,6 +1,6 @@
 # 0016 — The hub is its own warehouse, and a company runs at most three contracts
 
-- **Status**: accepted 2026-10-25 — **supersedes `0010`**
+- **State**: accepted
 - **Date**: 2026-10-25
 - **Block**: 3
 - **Supersedes**: `0010` (delivery chain with cargo warehouses bound 1:1 to a contract)

@@ -1,6 +1,6 @@
 # 0036 — The three balancing numbers: 10, 20 %, 3 000
 
-- **Status**: accepted 2026-10-25 — closes Q51
+- **State**: accepted
 - **Date**: 2026-10-25
 - **Block**: 5
 - **Depends on**: `0028` (escrow), `0015` (issuer), `0032` (counter spread), `docs/05-price-table.md`

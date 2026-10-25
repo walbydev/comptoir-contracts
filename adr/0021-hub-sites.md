@@ -1,6 +1,6 @@
 # 0021 — Hub sites: dedicated zones instead of a minimum distance (proposed)
 
-- **Status**: **proposed** — awaiting the requester's word; the technical costs below are **measured**,
+- **State**: rejected
   not assumed (spike `spike/hub-site/`, 2026-10-25)
 - **Date**: 2026-10-25
 - **Would replace**: the minimum-distance rule of `0014`

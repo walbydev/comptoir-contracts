@@ -1,6 +1,6 @@
 # 0033 — The counter is built early, before oil
 
-- **Status**: accepted 2026-10-25 by the requester ("bien avant le pétrole")
+- **State**: accepted
 - **Date**: 2026-10-25
 - **Block**: 5
 - **Refines**: `0025` (v1 scope, "three tiers"), `0033` replaces the idea of a tier as a gate

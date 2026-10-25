@@ -1,6 +1,6 @@
 # 0028 — The escrow is a percentage of the payout, and the pot must cover it
 
-- **Status**: accepted 2026-10-25 — **closes Q46 and Q47**; completes `0027`
+- **State**: accepted
 - **Date**: 2026-10-25
 - **Block**: 3
 - **Completes**: `0027` (contract escrow)

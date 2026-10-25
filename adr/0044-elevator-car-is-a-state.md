@@ -1,6 +1,6 @@
 # 0044 — The car is a state, not a sprite that travels
 
-- **Status**: accepted 2026-10-25 by the requester ("d'abord A et la suite après") — closes Q57
+- **State**: accepted
 - **Date**: 2026-10-25
 - **Block**: 10
 - **Completes**: `0043`

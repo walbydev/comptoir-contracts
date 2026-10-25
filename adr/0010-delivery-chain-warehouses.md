@@ -1,6 +1,6 @@
 # 0010 — Delivery chain: hub and space elevator, spaceport, cargo warehouses bound to a contract
 
-- **Status**: **superseded by `0016`** (2026-10-25) — the separate cargo warehouse is removed; the hub
+- **State**: superseded-by 0016
   carries the inventory. Kept for the record: the elevator/spaceport chain and the inserter/robot
   feeding still hold
 - **Date**: 2026-10-25

@@ -1,6 +1,6 @@
 # 0008 — Income is gated on activity: a passive player earns nothing
 
-- **Status**: accepted in principle — **the activity signal is an open prerequisite (Q19)**
+- **State**: parked
 - **Date**: 2026-10-25
 - **Block**: 3
 - **Supersedes**: —

@@ -1,6 +1,6 @@
 # 0004 — Credit items exist in the MVP, convertible both ways at the hub
 
-- **Status**: **superseded by `0023`** (2026-10-25) — no physical currency: no item, no face value, no
+- **State**: superseded-by 0023
   conversion. Kept for the record: the reasoning of block 1 and the reversal that followed
 - **Date**: 2026-10-25
 - **Block**: 1

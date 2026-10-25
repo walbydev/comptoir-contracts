@@ -7,7 +7,7 @@
 FACTORIO ?= factorio
 LUAC    ?= luac
 
-.PHONY: help check test package prices prices-md dump
+.PHONY: help check test package prices prices-md dump audit index
 
 help:
 	@echo "check     - Lua syntax check over every .lua file (needs luac, not installed here)"
@@ -16,6 +16,17 @@ help:
 	@echo "dump      - regenerate the prototype data dump from the installed game"
 	@echo "prices    - regenerate data/prices.lua from that dump (the mod's data file)"
 	@echo "prices-md - print the same table as markdown (the table in docs/05-price-table.md)"
+	@echo "audit     - check the framing documents for inconsistencies (exit 1 on a problem)"
+	@echo "index     - regenerate adr/README.md from the ADR files"
+
+# The framing outgrew human review: 47 ADRs, 77 decision rows. This checks the invariants that a
+# reader would otherwise have to reconstruct by hand, and it is the gate before a tag.
+audit:
+	python3 tools/doc_audit.py
+
+index:
+	python3 tools/doc_audit.py --index
+	@echo "wrote adr/README.md"
 
 # The game writes the dump to its own write-data directory (app-root/script-output when the
 # installation is a plain zip/unpacked build): no `cd` is needed, and none is done.

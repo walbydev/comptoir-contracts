@@ -1,8 +1,9 @@
 # Framing — Comptoir: company contracts (Factorio 2.1 mod)
 
 > Version: 1.0 · Date: 2026-10-25 · Requested by: Philippe Ryf
-> Status: **all ten blocks CLOSED** (2026-10-25) — 77 decisions recorded (5 withdrawn), 46 ADRs, 30
-> acceptance criteria, **no question left blocking v1**, 12 open questions, all belonging to parked features.
+> Status: **all ten blocks CLOSED** (2026-10-25) — **66 decisions in force**, 11 withdrawn
+> (Appendix C), 47 ADRs (30 in force), 30 acceptance criteria, **no question left blocking v1**,
+> 12 open questions, all belonging to parked features.
 > Repository: `walbydev/comptoir-contracts` (public GitHub, MIT) — created and verified 2026-10-25.
 > No development before tag `v0.1-cadrage`.
 
@@ -101,32 +102,23 @@ onto what already exists.
 
 | ID | Question | Philippe's decision | Trace |
 |---|---|---|---|
-| D1 | Nature of credits, first answer | **Virtual currency** (1a) — *superseded the same day* | ADR `0001` (superseded) |
-| D1-bis | Credit-item, final answer | ~~The item exists in the MVP, convertible both ways at the hub only~~ → **superseded by D39: no physical currency at all** | ADR `0004` → `0023` |
-| D2 | Delivery method, first answer | Insertion into the hub or rocket launch — **superseded by D21** (warehouses + elevator, no rocket) | ADR `0010` |
-| D3 | Purchasable technologies | **Curated list** (2a): never the technology that unlocks the hub, never a tech on the critical path | ADR `0002` |
+| D3 | Purchasable technologies | **Parked (post-v1)** — the rule stands if the feature returns: a **curated list** (2a), never the technology that unlocks the hub, never a tech on the critical path. v1 sells materials only (D55) | ADR `0002` (parked) |
 | D4 | Number of hubs | One hub or several — **settled by D25**: several per surface | ADR `0014` |
 | D5 | Space Age | **Works with and without the DLC**: prototypes owned by the mod, SA assets reused only when the DLC is present | ADR `0005` |
 | D6 | Repository forge | **Public GitHub `walbydev`** (3a), licence **MIT** | ADR `0003` |
 | D7 | Money format | **Integer credits only** — no cents, no fractional credit anywhere, explicit rounding | ADR `0006` |
-| ~~D8~~ | ~~Credit-item value~~ | **withdrawn** — there is no item | `0023` |
-| ~~D9~~ | ~~Conversion cost~~ | **withdrawn** — there is no conversion | `0023` |
-| ~~D10~~ | ~~Rate improvements~~ | **withdrawn** — no rate to improve; the two technologies leave the scope | `0023` |
 | D11 | Bank | **Parked (post-v1)**: deposit, withdraw, regular interest — with no player wallet (`0023`, `0024`) the bank has no subject in v1 | ADR `0007`, `0025` |
-| ~~D12~~ | ~~Players~~ | **Solo and multiplayer**; ~~gifting exists only via credit-items~~ → **no gifting**: nothing is giftable (D39), nobody but a company holds credits (D40) | §2, `0023`, `0024` |
 | D13 | Game horizon | **2 h speedrun to 100 h long game** — the economy scales by **progression tier**, not wall-clock | §2 |
 | D14 | Passive player | **Parked (post-v1)**: no income without activity — with no player wallet and no interest, there is nothing to pause | ADR `0008`, `0025` |
 | D15 | Bounties | **Parked (post-v1)**: nests, worms and science packs pay escalating bonuses | ADR `0009`, `0025` |
-| D16 | Money source | **One treasury funds every credit payout** — contracts, bounties, interest. *Revised by D26*: one treasury **per company** | ADR `0009`, `0014` |
+| D16 | Money source | **One treasury funds every credit payout** — in v1 that is the company's own balance. *Revised by D26*: one treasury **per company**. Bounties and interest, the other payers it named, are parked | ADR `0009` (parked), `0014` |
 | D17 | Contract mix | **Most contracts on already-acquired technologies**; a minority are "motivation" contracts requiring the next tier | §3 |
-| D18 | AFK signal | **Production**, not movement — *still open*: attribution in a shared multiplayer factory (Q19-bis) | ADR `0008` |
+| D18 | AFK signal | **Parked with the bank**: "production, not movement" was the signal for a per-player income, and there is no per-player money any more (D42). It returns only if a player purse does | `0008` (parked) |
 | D19 | Bank structure | **One bank** holding the accounts of players, companies, the colonial federation and the bank itself — *revised by `0014`: one unit and one issuer, N books* — **corrected 2026-10-25 by D42/`0026`: the player accounts disappear, one cooperative replaces them** | ADR `0011`, `0014`, `0026` |
-| D20 | Printing right | **Printing credits is a right obtained by research** — *blocked*: creation or materialisation (Q25) | ADR `0012` |
-| D21 | Delivery chain | **Hub + space elevator = the interface with the spaceport**; dedicated **cargo warehouses bound 1:1 to a contract**, fed by inserter **or** logistics robot | ADR `0010` |
-| D22 | Dispatch and loss | **Manual, contract by contract**; goods inside a destroyed hub are lost — **settled 2026-10-25** (Q24 → D44) | ADR `0010`, D44 |
-| D23 | Packaging | ~~**A set: one core mod + optional add-ons** (`company-contracts`, `-bank`, `-bounties`, `-mint`)~~ → **superseded 2026-10-25 by D41 (v1 = one mod) and renamed by D50 (`comptoir-*`)**. Kept as the record of the intention | ADR `0013`, `0025`, `0029` |
-| D24 | Add-on rule | Add-ons add **behaviour, not prototypes**, so they stay removable from a save — **applies only when add-ons return** | ADR `0013` |
-| D25 | Hub = company | **One hub = one space elevator = one spaceport = one company** that offers contracts **and** holds a bank counter; **several hubs**, on any surface, spaced apart | ADR `0014` |
+| D20 | Printing right | **Parked (post-v1)**: printing credits is a right obtained by research — creation or materialisation was never settled (Q25) | `0012` (parked) |
+| D21 | Delivery chain | **Hub + space elevator = the interface with the spaceport**; the hub's **own inventory** is fed by inserter or robot — the dedicated cargo warehouses of `0010` are gone (D31) | `0016` |
+| D22 | Dispatch and loss | **Manual, contract by contract**; goods inside a destroyed hub are lost — **settled 2026-10-25** (Q24 → D44) | D44, `0016` |
+| D25 | Hub = company | **One hub = one space elevator = one spaceport = one company** that offers contracts; **several hubs**, on any surface, spaced apart — the bank counter it used to carry is parked with the bank (D11) | ADR `0014` |
 | D26 | Common element | **The credit is the only value common to every company** — no scrip, no company-bound item; prices differ, the unit does not. One treasury **per holder** | ADR `0014` |
 | D27 | Company accounts | ~~Accounts are keyed by **holder and company**; a player's money sits *at* a company, so "where is my money" is a real question~~ → **replaced 2026-10-25 by D42 (`0026`): three kinds of holder — the cooperative, the companies, the federation. There is no player money, and the "where is my money" question no longer exists: it is in the cooperative or it is nowhere** | ADR `0014`, `0026` |
 | D28 | Issuer | **The colonial federation is the only issuer** (reading C); its account may go negative, and that is the money supply. Companies are operators with their own books; interest and bounties they pay are **debt**, not creation | ADR `0015` |
@@ -134,12 +126,11 @@ onto what already exists.
 | D30 | Price table | **One price table** for the whole set; a company may differ by a bounded coefficient and by its catalogue, never by a second table | §4, Q18 |
 | D31 | Hub = inventory | **No separate cargo warehouse**: the hub carries the inventory, fed by inserter or robot; a contract is served from that stock | ADR `0016` (supersedes `0010`) |
 | D32 | Contract load | **One to three active contracts per company**, never more; the generator refills up to the cap | ADR `0016` |
-| D33 | Bankruptcy | A company in default **loses every contract and issues none**; the hub is **resold to another company**; the debt stays with the dead company, so the loss lands on the federation | ADR `0018` |
-| D34 | Printing | The research raises **one step up the dial**, for the company that holds it, permanently. One research, one step | ADR `0017` |
-| D35 | Contract kinds | Every contract carries a `kind`: **one-off** (once, with a deadline), **recurring at a fixed price**, **recurring at a decaying price** (`payout_decay`). One structure, one generator, one GUI. *v1 keeps the one-off only* (`0025`) | ADR `0019` |
-| D36 | Decay | **Logarithmic**, anchored on the tier, floored at a **minimum price per delivered item** read from the price table; the contract stops being offered at its floor, and the number of occurrences is **derived**, never configured | ADR `0020` |
+| D33 | Bankruptcy | **Parked (post-v1)**: a company in default loses every contract and issues none; the hub is resold; the debt stays with the dead company | `0018` (parked) |
+| D34 | Printing | **Parked (post-v1)**: the research raises **one step up the dial**, for the company that holds it, permanently | `0017` (parked) |
+| D35 | Contract kinds | **Parked (post-v1) except the one-off**: every contract carries a `kind` — one-off (with a deadline), recurring at a fixed price, recurring at a decaying price. One structure, one generator, one GUI; **v1 offers the one-off only** (`0025`) | `0019` (parked) |
+| D36 | Decay | **Parked (post-v1)**: logarithmic, anchored on the tier, floored at a minimum price per delivered item read from the price table; the contract stops being offered at its floor, and the number of occurrences is derived, never configured | `0020` (parked) |
 | D37 | Company character | A company's catalogue is **homogeneous in kind** (Q41 = reading A) and its identity is the pair **what it wants + how it pays**, displayed on the tooltip and the contract list, with a colour and an icon. The kind changes at most once per tier | ADR `0022` |
-| D38 | Hub sites | *(proposed, awaiting confirmation)* Hubs are built on **dedicated, generated sites** instead of being spaced by a minimum distance; the site is a visible, unmineable resource patch and the check is a build-time script test with refund — the same cost the distance rule already carried | ADR `0021` |
 | D39 | No physical currency | **No credit item at all**: credits are integers on a balance, never an object. No face value, no conversion, no fee, no rate technology, nothing giftable (supersedes D1-bis, D8–D10) | ADR `0023` |
 | D40 | Non-nominative contracts | A contract belongs to the **company**, never to a player; any player may feed and dispatch; the payment goes to the company's balance; the cap is per company | ADR `0024` |
 | D41 | v1 scope | **v1 = one mod**: one hub = one company with its inventory, one contract kind (one-off, deadline), one shop, company balances, an endowment, three tiers, min-distance spacing. Everything else is parked as evolution | ADR `0025` |
@@ -150,7 +141,6 @@ onto what already exists.
 | D46 | Price band | `cost < payout < price (= cost × 1.5)` governs **every** number in the single table | D30, `0006` |
 | D47 | Escrow amount | `reserved = ceil(payout × rate)`, **one rate for the whole set**, in the price table. A contract **cannot be accepted** if the cooperative's free balance does not cover it | ADR `0028` |
 | D48 | Shop safety valve | The shop **always buys**, contract or not: it is the only way back from a cooperative at zero, and therefore the safety valve of the economy | ADR `0028` |
-| ~~D49~~ | ~~Hub power~~ | **WITHDRAWN 2026-10-25**: no draw, no grid, no closed state — the spaceport feeds the counter (D75, ADR `0046`). A container has no energy model at all, measured | `0030` (void on this point), `0045`, `0046` |
 | D50 | Naming | **`<family>-<feature>`**, lowercase, hyphenated; the family is chosen once, before the first release, and never after. Candidates: `charter`, `concord`, `outpost`; recommendation `charter` | ADR `0029` |
 | D51 | Locale | Interface available in **English and French** (`locale/en`, `locale/fr`); every string goes in both files | Q49 → settled |
 | D52 | Energy role | An entity's energy source is **fixed by prototype**: a hub cannot become a producer. Orbital power therefore needs a **second prototype** (a receiver), which is a second loop | ADR `0031` |
@@ -179,6 +169,11 @@ onto what already exists.
 | D75 | No power | The counter **draws nothing**: no pole, no fuel, no closed state. The spaceport feeds it, from orbit. The only placement rule left is the **minimum distance** between two counters; the anchor is now the recipe's cost alone | ADR `0046` |
 | D76 | Money target | A contract targets **2 500 credits**, not a tonnage: `qty = clamp(round(2500 / payout_per_unit), 1, 500)`. The floor is **one unit**, so a processing-unit contract pays 1 975 with a 395 reserve instead of being unaffordable | ADR `0047` |
 
+**Eleven decisions are not listed here.** They were withdrawn, replaced or suspended, and
+nothing in force depends on them; they are kept in **Appendix C** so the history stays
+readable without pushing a dead clause in front of a live one. A gap in the numbering means
+a decision died, not that one is missing.
+
 ### 1.2 Success indicators (observable) — **accepted by Philippe on 2026-10-25**
 
 | # | Indicator | Measurement | Status |
@@ -202,9 +197,9 @@ by Philippe on 2026-10-25** along with the whole set.
 - No final artwork in v0.1: placeholders accepted, art pass later.
 - No replacement of research: no technology on the critical path can be bought at the hub.
 - Several hubs per surface are **in** (D25) and **spaced by a minimum distance** (D21/`0025`).
-- ~~No credit-item in the MVP~~ — reversed 2026-10-25 (ADR `0004`), then **re-reversed the same day**:
-  there is **no physical currency at all** (`0023`). What stays forbidden: **creating credits outside
-  the declared channel** — the issuer's initial endowment and nothing else.
+- **No physical currency, ever** (`0023`): credits are integers on a balance. What is forbidden is
+  **creating credits outside the declared channel** — the issuer's initial endowment and nothing else.
+  (This line once reversed itself twice in a day; the arbitration in Appendix C is the record.)
 - **No player wallet in v1** (D39, D40): credits belong to **the cooperative and to the companies** (D42).
   The bank, its deposits and its interest are parked (`0025`).
 - **Multi-force is handled, not forbidden** (D69): each force owns its ledger, so a PvP map works and
@@ -291,9 +286,9 @@ hub for v1, several later" model would be a rewrite, not a setting.
 
 | Mod | Adds | Why it is separate |
 |---|---|---|
-| `company-contracts-bank` | interest, AFK gating on production, deposit/withdraw screens | the only mechanism that creates credit volume (ADR 0007/0008) |
-| `company-contracts-bounties` | nests, worms, science milestones, escalation on tier | a second faucet on the same treasury; a player may want contracts without bounties (ADR 0009) |
-| `company-contracts-mint` | the printing right | the most dangerous switch of the design; absent by default (ADR 0012) |
+| `comptoir-bank` | interest, AFK gating on production, deposit/withdraw screens | the only mechanism that creates credit volume (ADR 0007/0008) |
+| `comptoir-bounties` | nests, worms, science milestones, escalation on tier | a second faucet on the same treasury; a player may want contracts without bounties (ADR 0009) |
+| `comptoir-mint` | the printing right | the most dangerous switch of the design; absent by default (ADR 0012) |
 
 A player installs the core plus whatever add-ons they want. The core **never** knows about them: the
 dependency arrow points one way only (ADR 0013).
@@ -540,3 +535,24 @@ resolved with its feature, not before.
 | `docs/entrants/brief-cadrage-2026-10-25.md` | Hermes `web-coder`, 2026-10-25 (French, kept verbatim) | Original request, verified technical facts (§0.2), D1–D6, balancing leads, non-goals |
 | `adr/0001` … `adr/0013` | this framing | every structuring decision, with the rejected alternatives and why |
 | Factorio wiki | upstream | *Modding FAQ* (dependency prefixes), *Script interfaces* (`remote`), FFF 305 (GUI) |
+
+---
+
+## Appendix C — Withdrawn, replaced and suspended decisions
+
+Verbatim, with their successor. `tools/doc_audit.py` checks that no live row cites one of these
+without also naming its replacement.
+
+| ID | Question | What it said, and what killed it | Trace |
+|---|---|---|---|
+| ~~D1~~ | ~~Nature of credits, first answer~~ | **Virtual currency** (1a) — superseded the same day; the chain ends at **D39: no physical currency** | `0001` → `0023` |
+| ~~D1-bis~~ | ~~Credit-item, final answer~~ | ~~The item exists in the MVP, convertible both ways at the hub only~~ → **superseded by D39: no physical currency at all** | `0004` → `0023` |
+| ~~D2~~ | ~~Delivery method, first answer~~ | Insertion into the hub or rocket launch — **superseded**: the hub is its own warehouse (D31), no rocket | `0010` → `0016` |
+| ~~D8~~ | ~~Credit-item value~~ | **withdrawn** — there is no item | `0023` |
+| ~~D9~~ | ~~Conversion cost~~ | **withdrawn** — there is no conversion | `0023` |
+| ~~D10~~ | ~~Rate improvements~~ | **withdrawn** — no rate to improve; the two technologies leave the scope | `0023` |
+| ~~D12~~ | ~~Players~~ | **Solo and multiplayer**; ~~gifting exists only via credit-items~~ → **no gifting**: nothing is giftable (D39), nobody but a company holds credits (D40) | §2, `0023`, `0024` |
+| ~~D23~~ | ~~Packaging~~ | **Superseded by D41 (v1 = one mod) and renamed by D50 (`comptoir-*`)** — kept as the record of the intention | `0013` → `0025`, `0029` |
+| ~~D24~~ | ~~Add-on rule~~ | **Suspended with the add-ons**: behaviour only, never prototypes, removable from a save — this becomes true again the day a second mod exists | `0013` (parked) |
+| ~~D38~~ | ~~Hub sites~~ | **Not adopted**: dedicated generated sites were measured (`0021`) and rejected — the minimum distance between counters stays. The measurement is kept because it costs a day to redo | `0021` (rejected) |
+| ~~D49~~ | ~~Hub power~~ | **WITHDRAWN 2026-10-25**: no draw, no grid, no closed state — the spaceport feeds the counter (D75, ADR `0046`). A container has no energy model at all, measured | `0030` (void on this point), `0045`, `0046` |

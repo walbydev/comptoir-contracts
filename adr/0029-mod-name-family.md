@@ -1,6 +1,6 @@
 # 0029 — The name: a family prefix, then the feature
 
-- **Status**: **accepted** 2026-10-25 — family = **`comptoir`**, v1 mod = **`comptoir-contracts`**;
+- **State**: accepted
   the repository was renamed to match in the same pass, before any publication
 - **Date**: 2026-10-25
 - **Block**: 4

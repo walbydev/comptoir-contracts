@@ -1,6 +1,6 @@
 # 0027 — An expired contract costs credits: the amount is reserved when it is accepted
 
-- **Status**: accepted 2026-10-25 — **closes Q08**; two parameters still open (Q46, Q47)
+- **State**: accepted
 - **Date**: 2026-10-25
 - **Block**: 3
 - **Depends on**: `0026` (the cooperative whose balance is reserved)

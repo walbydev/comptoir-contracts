@@ -1,6 +1,6 @@
 # 0038 — The two display questions: both, in each case
 
-- **Status**: accepted 2026-10-25 by the requester ("1 les deux, 2 les deux")
+- **State**: accepted
 - **Date**: 2026-10-25
 - **Block**: 6
 - **Completes**: `docs/06-interface.md` §6

@@ -1,6 +1,6 @@
 # 0046 — The counter draws no power: the spaceport feeds it
 
-- **Status**: accepted 2026-10-25 by the requester ("on abandonne la consommation pour le hub. Il est alimenté par le spatioport")
+- **State**: accepted
 - **Date**: 2026-10-25
 - **Supersedes**: `0030` on the consumption point (D49) — `0030`'s orbital-production half stays parked in `comptoir-freight`
 - **Rejects**: option B of `0045`

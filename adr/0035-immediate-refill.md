@@ -1,6 +1,6 @@
 # 0035 — A freed slot refills immediately; there is no refresh timer
 
-- **Status**: accepted 2026-10-25 — closes the last open point of `0034`
+- **State**: accepted
 - **Date**: 2026-10-25
 - **Block**: 5
 

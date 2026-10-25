@@ -1,6 +1,6 @@
 # 0015 — The federation issues, the companies operate: one dial from poor to unlimited
 
-- **Status**: accepted 2026-10-25 — **Q30 = reading C**, **Q31 = a dial**, Q32 (inter-company
+- **State**: accepted
   transfer) still open
 - **Date**: 2026-10-25
 - **Block**: 3

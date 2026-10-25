@@ -1,6 +1,6 @@
 # 0041 — The economy is per force
 
-- **Status**: accepted 2026-10-25 by the requester ("2 economy séparée")
+- **State**: accepted
 - **Date**: 2026-10-25
 - **Block**: 8
 - **Closes**: Q56

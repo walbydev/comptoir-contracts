@@ -1,6 +1,6 @@
 # 0006 — Monetary rules: integer credits, fixed face value, tiered conversion cost
 
-- **Status**: accepted — one clause proposed, awaiting Q16 (whether the improvement technologies are
+- **State**: accepted
   researched or bought)
 - **Date**: 2026-10-25
 - **Block**: 2

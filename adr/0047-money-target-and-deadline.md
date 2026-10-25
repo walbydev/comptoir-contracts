@@ -1,6 +1,6 @@
 # 0047 — The economy was inconsistent: a money target, a quantity floor of 1, and a deadline that varies
 
-- **Status**: accepted 2026-10-25 — corrects `0034` (deadline), `0036` (numbers) and the worked example of
+- **State**: accepted
   `docs/05-price-table.md`
 - **Date**: 2026-10-25
 - **Reported by**: the coding agent, while implementing a7. Both defects are mine.

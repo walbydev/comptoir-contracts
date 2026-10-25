@@ -1,6 +1,6 @@
 # 0039 — Release and support policy: 0.x, public issues, immutable releases
 
-- **Status**: accepted 2026-10-25 by the requester ("1. 0.x — 2. ouverts au public")
+- **State**: accepted
 - **Date**: 2026-10-25
 - **Block**: 7
 - **Closes**: Q09 (publication procedure, verified from the official wiki, not assumed)

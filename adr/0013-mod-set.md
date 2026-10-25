@@ -1,6 +1,6 @@
 # 0013 — A set: one core mod plus optional extension mods
 
-- **Status**: accepted by the requester's proposal (2026-10-25) — **naming, repository and publication
+- **State**: superseded-by 0025
   details open (Q27–Q29)**
 - **Date**: 2026-10-25
 - **Block**: 3

@@ -1,6 +1,6 @@
 # 0032 — The counter buys at cost and sells at cost × 1.5
 
-- **Status**: accepted 2026-10-25 (derived from D46, then checked for the first time against real
+- **State**: accepted
   numbers)
 - **Date**: 2026-10-25
 - **Block**: 5

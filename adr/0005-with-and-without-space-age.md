@@ -1,6 +1,6 @@
 # 0005 — The mod works with and without the Space Age DLC
 
-- **Status**: accepted
+- **State**: accepted
 - **Date**: 2026-10-25
 - **Block**: 1
 - **Supersedes**: —

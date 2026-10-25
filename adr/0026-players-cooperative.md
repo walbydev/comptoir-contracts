@@ -1,6 +1,6 @@
 # 0026 — The players form a cooperative: one shared account, separate company accounts
 
-- **Status**: accepted 2026-10-25 — **settles Q45**, replaces the "company purse only" model of `0024`
+- **State**: accepted
 - **Date**: 2026-10-25
 - **Block**: 3
 - **Amends**: `0024` (non-nominative contracts), `0023` (no physical currency)

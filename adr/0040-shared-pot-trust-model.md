@@ -1,6 +1,6 @@
 # 0040 — Who may act: everyone, because the engine offers no role to give
 
-- **Status**: accepted 2026-10-25 — block 8; one point still open (Q56, per-force economy)
+- **State**: accepted
 - **Date**: 2026-10-25
 - **Block**: 8
 - **Depends on**: `0026` (cooperative), `0027`/`0028` (escrow), `0016` (hub is the warehouse)

@@ -1,6 +1,6 @@
 # 0031 — A building cannot change role: the orbital power needs a second prototype
 
-- **Status**: accepted 2026-10-25 (technical finding) — the product decision stays open (Q48)
+- **State**: accepted
 - **Date**: 2026-10-25
 - **Block**: 4
 - **Extends**: `0030` (hub power, orbital production)

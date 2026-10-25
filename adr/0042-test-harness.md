@@ -1,6 +1,6 @@
 # 0042 — A separate test mod, three proof layers, and a build that refuses to lie
 
-- **Status**: accepted 2026-10-25 by the requester ("1 test séparé — 2 seconde")
+- **State**: accepted
 - **Date**: 2026-10-25
 - **Block**: 9
 - **Produces**: `docs/09-tests.md`
