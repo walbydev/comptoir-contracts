@@ -6,7 +6,7 @@ technologies without research.
 
 > Guiding rule: **the hub complements local production, it never replaces it.**
 
-**State: framing in progress (blocks 1–3 consolidated, 32 decisions, 14 questions open).** This
+**State: framing in progress (blocks 1–3 consolidated, 37 decisions, 19 questions open).** This
 repository holds the project definition, not code yet. No development before tag `v0.1-cadrage`.
 
 | Document | Purpose |
@@ -46,10 +46,15 @@ core never knows its add-ons: the dependency arrow points one way only — ADR 0
 | Issuer | **the colonial federation issues** (its negative balance is the money supply); companies operate with their own books and can go dry | ADR 0015 |
 | Solvency | one startup dial sets each company's credit line: **poor** (0) / **rich** (default) / **unlimited** (sandbox) | ADR 0015 |
 | Prices | **one** price table for the whole set | §1.1 D30 |
+| Delivery | **the hub is its own warehouse** — one inventory, no second building, **1–3 active contracts** | ADR 0016 |
+| Contracts | three kinds: **one-off**, **recurring at a fixed price**, **recurring at a decaying price** | ADR 0019 |
+| Printing | the research raises the credit line **one step up the dial** | ADR 0017 |
+| Failure | a company in default **loses its contracts and is resold**; the debt lands on the federation | ADR 0018 |
 
-Still open and **not** defaulted: what the printing research unlocks (Q25), goods lost on expiry or
-destruction (Q24), company debt and its rate (Q33), science bounty unit (Q22), multiplayer
-attribution of activity (Q19-bis), repository layout and names (Q27, Q29).
+Still open and **not** defaulted: dispatch and goods lost when the hub dies (Q24), resale terms
+(Q34), I2 rewritten for three contracts (Q35), one stock shared by three contracts (Q36), whether the
+dial step can reach `unlimited` (Q37), credits moved between companies (Q32), science bounty unit
+(Q22), multiplayer attribution of activity (Q19-bis), repository layout and names (Q27, Q29).
 
 ## Test chain
 

@@ -1,7 +1,7 @@
 # Framing — Company contracts (Factorio 2.1 mod set)
 
 > Version: 0.3 · Date: 2026-10-25 · Requested by: Philippe Ryf
-> Status: **blocks 1–3 consolidated** — 32 decisions recorded, 14 questions still open.
+> Status: **blocks 1–3 consolidated** — 37 decisions recorded, 19 questions still open.
 > Repository: `walbydev/factorio-contrats` (public GitHub, MIT) — created and verified 2026-10-25.
 > No development before tag `v0.1-cadrage`.
 
@@ -131,13 +131,18 @@ onto what already exists.
 | D28 | Issuer | **The colonial federation is the only issuer** (reading C); its account may go negative, and that is the money supply. Companies are operators with their own books; interest and bounties they pay are **debt**, not creation | ADR `0015` |
 | D29 | Solvency dial | A company can be **dry**. One startup dial sets its credit line: **poor** (0) / **rich** (default) / **unlimited** (sandbox, I1–I2 void). The numbers live in the data file | ADR `0015` |
 | D30 | Price table | **One price table** for the whole set; a company may differ by a bounded coefficient and by its catalogue, never by a second table | §4, Q18 |
+| D31 | Hub = inventory | **No separate cargo warehouse**: the hub carries the inventory, fed by inserter or robot; a contract is served from that stock | ADR `0016` (supersedes `0010`) |
+| D32 | Contract load | **One to three active contracts per company**, never more; the generator refills up to the cap | ADR `0016` |
+| D33 | Bankruptcy | A company in default **loses every contract and issues none**; the hub is **resold to another company**; the debt stays with the dead company, so the loss lands on the federation | ADR `0018` |
+| D34 | Printing | The research raises **one step up the dial**, for the company that holds it, permanently. One research, one step | ADR `0017` |
+| D35 | Contract kinds | Every contract carries a `kind`: **one-off** (once, with a deadline), **recurring at a fixed price**, **recurring at a decaying price** (`payout_decay`, distinct from the conversion rate of D9). One structure, one generator, one GUI | ADR `0019` |
 
 ### 1.2 Success indicators (observable) — **accepted by Philippe on 2026-10-25**
 
 | # | Indicator | Measurement | Status |
 |---|---|---|---|
 | I1 | The hub does not replace production | On a reference save, buying a material from the hub costs **strictly more** than producing it locally (ratio ≥ 1.5), measured on 10 reference items | accepted — **`poor`/`rich` only, void in `unlimited`** |
-| I2 | Contracts remain a choice | At any time the player can honour at least **2 contracts out of 4** from current stock, and **at most 3 out of 4** without producing — so production is required to keep the pace | accepted |
+| I2 | Contracts remain a choice | At any time the player can honour at least **2 contracts out of 4** from current stock, and **at most 3 out of 4** without producing — so production is required to keep the pace | **needs re-expression for a cap of 3 (Q35)** |
 | I3 | The hub is used, not ignored | Philippe opens it at least **once per play session** across 5 consecutive test sessions | accepted |
 | I4 | The hub is understandable without documentation | First contract delivered **without reading external docs**, using only tooltips and the GUI | accepted |
 | I5 | No technical regression | No Lua error on load, 0 errors across headless scenarios, a save from version N reloadable in N+1 | accepted |
@@ -213,10 +218,7 @@ the scope survivable.
 
 ### 3.2 Core: `company-contracts`
 
-Hub + space elevator, spaceport, cargo warehouses bound to one contract each and fed by inserter or
-logistics robot, the contract generator (current-tier majority + motivation minority, dry expiry),
-virtual credits, the credit-item, two-way conversion with a fixed fee and a degressive rate, the
-ledger with its accounts, the shop, the curated technology list, the tier model.
+Hub + space elevator, spaceport, **the hub's own inventory** (fed by inserter or logistics robot), the contract generator (one to three active contracts, current-tier majority + motivation minority, dry expiry), virtual credits, the credit-item, two-way conversion with a fixed fee and a degressive rate, the ledger with its accounts, the shop, the curated technology list, the tier model.
 
 This is the loop that can be measured: **deliver → get paid → convert → buy**.
 
@@ -244,8 +246,8 @@ API for third-party mods beyond the add-on interface, final art.
 
 | # | Criterion |
 |---|---|
-| A1 | A fresh save honours its **first contract end to end in under 30 minutes**, and that first contract needs **no warehouse** — otherwise the 2-hour horizon never starts |
-| A2 | A bound warehouse accepts insertion by inserter **and** by logistics robot; an unbound one is inert and **says so** |
+| A1 | A fresh save honours its **first contract end to end in under 30 minutes**, with the hub and its inventory only — no second building to construct, otherwise the 2-hour horizon never starts |
+| A2 | The hub's inventory accepts insertion by inserter **and** by logistics robot; a contract can only be dispatched when its full quantity is in stock (no partial delivery) |
 | A3 | Converting credits to items and back **never increases the total** (automated test, integers only) |
 | A4 | The conversion fee is displayed **before** confirmation, and I4 holds on that same screen |
 | A5 | The core loads and runs the same scenarios in **both** DLC configurations (headless, two matrices) |
@@ -254,6 +256,8 @@ API for third-party mods beyond the add-on interface, final art.
 | A8 | Each add-on installs, runs and is **removed** without breaking an existing save |
 | A9 | Two hubs on the same surface are refused below the minimum distance, **with a message and without losing the item**; two hubs on the same surface offer **different** contract sets |
 | A10 | The conservation invariant is asserted in `poor` and `rich`; in `unlimited` the game **says** it is a sandbox and the harness asserts only that nothing crashes |
+| A11 | A company driven to default **loses its contracts, issues none, and is resold**; the resale hands the building to a different company and the dead company's debt stays with it (headless assertion) |
+| A12 | The catalogue contains the **three contract kinds**; a `recurring_decaying` payout is strictly lower at each occurrence and stops being offered at its floor; the GUI shows the kind and the **next** payout before acceptance |
 
 ---
 
@@ -291,13 +295,14 @@ Already certain:
   catalogue, a treasury and a counter.
 - **Accounts**: keyed by `(holder, company)` — holder = player, company, federation. Integer balances.
 - **Conservation invariant**: `sum(company treasuries) + sum(player accounts) + credits held as
-  items` is constant, except through the issuer (Q30). Tested in CI at every configuration.
-- **Solvency** (proposal, Q31): a company pays contracts and interest **out of its own treasury** and
-  cannot go below zero; a company at zero stops offering new contracts until it sells.
-- **Warehouse binding**: by `unit_number`, one contract per warehouse, states `inert / bound / ready /
-  dispatching`; an unbound warehouse refuses items and explains why.
-- **Federation revenue**: `[À TRANCHER — Q23]` proposal: its commercial margin — it buys deliveries
-  below the price at which it resells materials and technologies.
+  items` is constant, except through the issuer (D28). Tested in CI at every configuration.
+- **Hub inventory** (D31): one custom inventory on the hub entity, fed by inserter or logistics robot.
+  Up to three contracts read from it. No binding state, no second building.
+- **Solvency** (D29): a company pays out of its own balance plus a credit line drawn on the
+  federation. The line is set by the startup dial. At zero and line exhausted: **default** (`0018`) —
+  contracts lost, no new ones, the hub is resold.
+- **Federation** (D28): the only holder whose balance may go negative; that negative is the money
+  supply, bounded by the dial. It earns the interest on the debts it holds.
 - **Price table**: one versioned, human-readable data file; every price derives from a production cost
   (raw + energy + time) inside the band `cost < contract payout < hub price (= cost × 1.5)` (Q18).
 - **Retention**: nothing to design. A save carries its own history; no external log.
@@ -363,7 +368,7 @@ not weeks.
 | ~~Q20~~ | ~~One treasury or separate faucets?~~ → **one treasury (D16)** | — | Philippe | **settled** |
 | ~~Q26~~ | ~~Cut interest and bounties to wave 2?~~ → **reframed: they become add-ons (D23)** | — | Philippe | **settled 2026-10-25** |
 | ~~Q05~~ | ~~A single hub or several?~~ → **several hubs per surface, on any surface, spaced apart (D25)** | — | Philippe | **settled 2026-10-25** |
-| Q08 | Late penalty or **dry expiry** of a contract? | A penalty needs a debt or reputation mechanic, otherwise the contract is neutral | Philippe | block 3 |
+| Q08 | Late penalty or **dry expiry** of a contract? *(now that D35 makes a deadline explicit for the one-off kind and a cadence for the recurring ones)* | A penalty needs a debt or reputation mechanic, otherwise the contract is neutral | Philippe | block 3 |
 | ~~Q15~~ | ~~What funds the interest?~~ → **the company's margin, then its credit line (debt). Only the rate remains, and it belongs to the price table (Q18)** | — | Philippe | **settled in principle 2026-10-25, ADR 0015** |
 | Q16 | Rate-improvement technologies: **researched normally** (proposal) or bought at the hub? | Bought: the hub funds its own discount — a self-financing loop | Philippe | block 3 |
 | Q18 | Is the price **band** `cost < payout < price (= cost × 1.5)` the rule for every number? | Ad-hoc numbers: I1 is unmeasurable and the table gets rewritten three times | Philippe | block 3 |
@@ -371,14 +376,21 @@ not weeks.
 | Q21 | Bounty escalation anchored on **tier** (proposal) rather than **evolution factor**? | Evolution: farming nests becomes the optimal strategy — exactly what the bounty pays for | Philippe | block 3 |
 | Q22 | Science-pack bounty: **per unit** or **per milestone** — first *N* packs of each new tier then closed (proposal)? | Per unit: a large factory prints credits and the hub becomes decorative | Philippe | block 3 |
 | ~~Q23~~ | ~~What funds the federation's account?~~ → **it issues**: its negative balance is the money supply, bounded by the D29 dial. It earns the interest on the debts it holds | — | Philippe | **settled in principle 2026-10-25, ADR 0015** |
-| Q24 | **Dispatch**: manual validation or automatic on quantities reached? And what happens to goods inside a warehouse on **expiry**, **destruction** or **unbinding**? | Silence here = a player silently loses hours of production | Philippe | block 3 |
-| Q25 | **Printing, reformulated by `0015`**: the research unlocks what — (a) a one-off issuance, (b) a recurring issuance bounded by the dial, (c) one step up on the dial? | (b) with a loose bound is a printer with a nice name; (c) is the cleanest and the easiest to audit | Philippe | block 3 |
+| Q24 | **Dispatch**: manual, contract by contract (proposed — with a shared stock and three contracts, an automatic dispatch has to pick a winner, and there is no non-arbitrary rule), or automatic? And what happens to goods in the hub when it is **destroyed**? | Silence here = a player silently loses hours of production | Philippe | block 3 |
+| ~~Q25~~ | ~~Printing: creation or materialisation?~~ → **neither: the research raises the dial one step, per company, permanently (D34)** | — | Philippe | **settled 2026-10-25, ADR 0017** |
 | Q27 | **Repository layout**: one monorepo holding the four mods (proposal) or four repositories? | Four repos: four CI, four changelogs, four places to be wrong | Philippe | block 4 |
 | Q28 | **Publication**: four portal listings with the core required (proposal) or a single pack? | A pack: the player cannot choose, which voids D23 | Philippe | block 7 |
 | Q29 | **Names**: `company-contracts` + `-bank` / `-bounties` / `-mint`? | Renaming after release is a migration for every existing save | Philippe | block 4 |
 | ~~Q30~~ | ~~Who issues the unit?~~ → **C: the federation issues and guarantees; companies keep their own books** (D28) | — | Philippe | **settled 2026-10-25, ADR 0015** |
 | ~~Q31~~ | ~~May a company pay beyond its balance?~~ → **it can go dry, and one dial (poor / rich / unlimited) sets the credit line** (D29) | — | Philippe | **settled 2026-10-25, ADR 0015** |
-| Q33 | **Does a company repay its debt to the federation, and at what rate?** What happens to a company deeply in debt that never sells? | A free, never-repaid line means `unlimited` is the only honest mode and `poor` is decorative | Philippe | block 3 |
+| ~~Q33~~ | ~~Does a company repay its debt?~~ → **no: it dies.** Contracts lost, none issued, the hub is resold to another company, the debt stays with the dead company and lands on the federation (D33) | — | Philippe | **settled 2026-10-25, ADR 0018** |
+| Q34 | **Resale terms**: who buys the dead hub (the federation as broker, a pool of neutral companies, the player under another name)? At what price? What happens to the stock inside? Does the buyer get a **fresh** catalogue and line? | A buyer with no cost and no constraint turns default into a free reset | Philippe | block 3 |
+| Q35 | **I2 rewritten for a cap of three contracts**: "at least 1 of the 3 from stock, never all 3 without producing" — is that the faithful translation? | I2 is an accepted indicator; rewriting it silently would make the acceptance test say something the requester never agreed to | Philippe | block 3 |
+| Q36 | **Shared stock, three contracts**: first-come first-served at dispatch, or quantities **reserved** per contract? | Unreserved: the GUI cannot say "this contract is ready"; reserved: the stock is fragmented and the player fights the interface | Philippe | block 3 |
+| Q37 | The dial step (D34): does the research **stop at `rich`**, or can it reach `unlimited` mid-game — in which case I1/I2 are void from that moment, not from map creation? | Reaching `unlimited` by research puts the sandbox inside the balanced game | Philippe | block 3 |
+| Q38 | `recurring_decaying`: where is the **floor** (below local cost = a trap; above = a nudge), and can the player **abandon** a recurring contract, at what cost? | No floor: an infinite tail of worthless contracts. No abandon: the player is imprisoned by a contract signed at tier 2 | Philippe | block 3 |
+| Q39 | Does a recurring contract **hold one of the three active slots** for its whole life, or live outside the cap? | Inside: three recurring contracts freeze the catalogue and no opportunity ever appears | Philippe | block 3 |
+| Q40 | **Decay shape**: fixed percentage per occurrence, fixed step in credits, or a curve tied to the tier? And may a company's identity skew its mix of kinds? | A % decays to infinity; a fixed step can jump below cost in two occurrences on a cheap item | Philippe | block 3 |
 | Q32 | Moving credits between **two companies**: item conversion only, or a transfer between counters with a fee? | Free transfers: no reason to hold money anywhere; for-pay only: tedious for a legitimate player | Philippe | block 4 |
 | Q09 | Exact publishing procedure on `mods.factorio.com` (upload, moderation, delay) | `[to verify]` — no credible release date without it | cadrage (research) | block 7 |
 
