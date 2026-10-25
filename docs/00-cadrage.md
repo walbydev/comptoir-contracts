@@ -1,7 +1,7 @@
 # Framing — Company contracts (Factorio 2.1 mod set)
 
 > Version: 0.3 · Date: 2026-10-25 · Requested by: Philippe Ryf
-> Status: **blocks 1–3 CLOSED, block 4 in progress** (2026-10-25) — 55 decisions recorded (4 withdrawn), 31 ADRs, 14
+> Status: **blocks 1–3 CLOSED, block 4 in progress** (2026-10-25) — 57 decisions recorded (4 withdrawn), 32 ADRs, 15
 > acceptance criteria, **no question left blocking v1**, 15 parked with their features.
 > Repository: `walbydev/comptoir-contracts` (public GitHub, MIT) — created and verified 2026-10-25.
 > No development before tag `v0.1-cadrage`.
@@ -155,6 +155,8 @@ onto what already exists.
 | D51 | Locale | Interface available in **English and French** (`locale/en`, `locale/fr`); every string goes in both files | Q49 → settled |
 | D52 | Energy role | An entity's energy source is **fixed by prototype**: a hub cannot become a producer. Orbital power therefore needs a **second prototype** (a receiver), which is a second loop | ADR `0031` |
 | D53 | Orbital power | **Parked as evolution.** When it returns: one receiver prototype, one up-going order type, one technology — and the failure mode of a lost shipment. Not v1 | ADR `0030`, `0031` |
+| D54 | Counter spread | The counter **sells at cost × 1.5 and buys at cost**. The 50 % spread is its margin and the price of the safety valve. No pair of operations is profitable in both directions, so no arbitrage exists | ADR `0032` |
+| D55 | v1 catalogue | The counter sells **materials only, no buildings**: 16 items from copper cable to processing unit, priced from the game's recipes (`docs/05-price-table.md`) | ADR `0032`, `tools/cost_table.py` |
 
 ### 1.2 Success indicators (observable) — **accepted by Philippe on 2026-10-25**
 
@@ -290,6 +292,7 @@ API for third-party mods beyond the add-on interface, final art.
 | A12 | A company's contract list contains **the single kind of that company**, and the kind is displayed; across two companies on the same surface the kinds **differ**; a `recurring_decaying` payout is **strictly lower at each occurrence, logarithmically**, and stops being offered at its per-item floor; the GUI shows the **next** payout before acceptance |
 | A13 | An expired contract moves **exactly the reserved amount** from the cooperative to the offering company; delivery releases the hold; the reserved amount is **visible before acceptance** |
 | A14 | From a cooperative at **zero**, selling goods to a hub (with no contract active) restores a spendable balance and allows a contract to be accepted again — no deadlock |
+| A15 | **Buying then immediately reselling always loses credits** (counter spread, D54): no pair of operations is profitable in both directions |
 
 ---
 
@@ -475,6 +478,8 @@ resolved with its feature, not before.
 | ~~Q49~~ | ~~Interface language?~~ → **English and French** (D51) | — | Philippe | **settled 2026-10-25** |
 | ~~Q50~~ | ~~Family prefix?~~ → **`comptoir`**: mod `comptoir-contracts`, repo renamed, package `comptoir-contracts_<version>.zip` (D50, ADR `0029`) | — | Philippe | **settled 2026-10-25** |
 | Q09 | Exact publishing procedure on `mods.factorio.com` (upload, moderation, delay) | `[to verify]` — no credible release date without it | cadrage (research) | block 7 |
+| Q51 | **Three balancing numbers** to arbitrate (block 5): the scale (credits per raw unit, proposed 10), the escrow rate (proposed 20 %), the initial endowment (proposed 3 000). The table itself is measured, not chosen | They set the feel of the whole economy and the size of every number the player reads | Philippe | block 5 |
+| Q52 | **The three tier thresholds**: which technologies open tier 2 and tier 3 | Tiers decide which items a contract can ask for; set them too high and tier 1 is a dead end | Philippe | block 5 |
 
 ---
 

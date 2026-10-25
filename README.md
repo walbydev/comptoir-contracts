@@ -17,28 +17,32 @@ Everything else is **parked as evolution**, written in `adr/` and out of v1: the
 bounties, the printing right, recurring and decaying contracts, debt and resale, dedicated hub sites,
 buying technologies, credit transfers, and the four-mod set.
 
-State: **blocks 1–3 closed, block 4 in progress** (2026-10-25) — 55 decisions (4 withdrawn), 31 ADRs,
-14 acceptance criteria, **no question left blocking v1**, 15 parked with their features. The
+State: **blocks 1–3 closed, block 4 in progress** (2026-10-25) — 57 decisions (4 withdrawn), 32 ADRs,
+15 acceptance criteria, **no question left blocking v1**, 15 parked with their features. The
 repository holds the project definition, not code yet. No development before tag `v0.1-cadrage`.
 
 | Document | Purpose |
 |---|---|
 | [`docs/00-cadrage.md`](docs/00-cadrage.md) | master document: ten blocks, environment, vision, scope |
+| [`docs/05-price-table.md`](docs/05-price-table.md) | the price table, computed from the game's own recipes |
+| [`tools/cost_table.py`](tools/cost_table.py) | the instrument that computes it (`make prices`) |
 | [`adr/`](adr/) | architecture decisions, numbered, never rewritten |
 | [`docs/entrants/`](docs/entrants/) | frozen handoff brief (input material, original language) |
 | [`spike/`](spike/) | throwaway prototypes, dated |
 
-## The set
+## The family
 
-| Mod | Role | Trace |
+| Mod | State | Role |
 |---|---|---|
-| `company-contracts` | **core**: hub + elevator, spaceport, cargo warehouses bound 1:1 to a contract, contracts, credits and credit-item, conversion, ledger, shop, curated technologies, tiers | ADR 0010, 0004, 0006, 0002 |
-| `company-contracts-bank` | add-on: interest, AFK gating on production, deposits | ADR 0007, 0008 |
-| `company-contracts-bounties` | add-on: nests, worms, science milestones | ADR 0009 |
-| `company-contracts-mint` | add-on: the printing right | ADR 0012 |
+| **`comptoir-contracts`** | **v1** | the hub, the contracts, the cooperative, the counter |
+| `comptoir-freight` | evolution | goods going up the elevator, orbital power (ADR 0030, 0031) |
+| `comptoir-bank` | evolution | interest, deposits, activity-gated income (ADR 0007, 0008) |
+| `comptoir-bounties` | evolution | nests, worms, science milestones (ADR 0009) |
+| `comptoir-mint` | evolution | the printing right (ADR 0012) |
 
-Add-ons add **behaviour, never prototypes**, so each one stays removable from an existing save. The
-core never knows its add-ons: the dependency arrow points one way only — ADR 0013.
+The family is a **name**, not a dependency graph: v1 is one mod and knows nothing of the others. When
+an add-on returns, it depends on the core and the arrow never points back (ADR 0013, amended by
+0025 and 0029).
 
 ## Decisions already made
 

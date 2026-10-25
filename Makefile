@@ -4,12 +4,21 @@
 FACTORIO ?= $(HOME)/.local/opt/factorio/bin/x64/factorio
 LUAC    ?= luac
 
-.PHONY: help check test package
+.PHONY: help check test package prices dump
 
 help:
 	@echo "check    - Lua syntax check over every .lua file"
 	@echo "test     - headless Factorio scenario run (not implemented yet)"
 	@echo "package  - build the mod zip for the portal (not implemented yet)"
+	@echo "dump     - regenerate the prototype data dump from the installed game"
+	@echo "prices   - recompute the price table from that dump"
+
+dump:
+	cd $(dir $(FACTORIO))../.. && ./bin/x64/factorio --dump-data
+	@echo "dump written to script-output/data-raw-dump.json"
+
+prices:
+	python3 tools/cost_table.py --markdown
 
 check:
 	@files=$$(find . -name '*.lua' -not -path './.git/*'); \
