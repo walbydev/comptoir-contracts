@@ -1,7 +1,7 @@
 # Framing — Comptoir: company contracts (Factorio 2.1 mod)
 
 > Version: 1.0 · Date: 2026-10-25 · Requested by: Philippe Ryf
-> Status: **all ten blocks CLOSED** (2026-10-25) — 76 decisions recorded (4 withdrawn), 44 ADRs, 30
+> Status: **all ten blocks CLOSED** (2026-10-25) — 77 decisions recorded (5 withdrawn), 46 ADRs, 30
 > acceptance criteria, **no question left blocking v1**, 12 open questions, all belonging to parked features.
 > Repository: `walbydev/comptoir-contracts` (public GitHub, MIT) — created and verified 2026-10-25.
 > No development before tag `v0.1-cadrage`.
@@ -150,7 +150,7 @@ onto what already exists.
 | D46 | Price band | `cost < payout < price (= cost × 1.5)` governs **every** number in the single table | D30, `0006` |
 | D47 | Escrow amount | `reserved = ceil(payout × rate)`, **one rate for the whole set**, in the price table. A contract **cannot be accepted** if the cooperative's free balance does not cover it | ADR `0028` |
 | D48 | Shop safety valve | The shop **always buys**, contract or not: it is the only way back from a cooperative at zero, and therefore the safety valve of the economy | ADR `0028` |
-| D49 | Hub power | The hub has a **small electric draw**: it must be connected to a grid, which is a placement constraint for free and a closed counter when unpowered — **CONTRADICTION 2026-10-25**: a `container` prototype has **no energy model** (measured), so this cannot hold with D31. Resolution in ADR `0045`, Q58 pending | ADR `0030`, `0045` |
+| ~~D49~~ | ~~Hub power~~ | **WITHDRAWN 2026-10-25**: no draw, no grid, no closed state — the spaceport feeds the counter (D75, ADR `0046`). A container has no energy model at all, measured | `0030` (void on this point), `0045`, `0046` |
 | D50 | Naming | **`<family>-<feature>`**, lowercase, hyphenated; the family is chosen once, before the first release, and never after. Candidates: `charter`, `concord`, `outpost`; recommendation `charter` | ADR `0029` |
 | D51 | Locale | Interface available in **English and French** (`locale/en`, `locale/fr`); every string goes in both files | Q49 → settled |
 | D52 | Energy role | An entity's energy source is **fixed by prototype**: a hub cannot become a producer. Orbital power therefore needs a **second prototype** (a receiver), which is a second loop | ADR `0031` |
@@ -176,6 +176,7 @@ onto what already exists.
 | D72 | Elevator cycle | The elevator leaves and returns: `down → rising → away → descending → down`, **one dispatch at a time per hub**, cycle **2 min** (one number in the data file). **Only `down` may send**; goods leave with the car; the contract is paid **on return** | ADR `0043` |
 | D73 | Elevator car | **Route A**: the car is a **state** with three graphics, no per-tick work, no `rendering` API. Route B (a sprite that physically travels, with a bounded `on_tick`) is parked in `comptoir-freight`, after a spike | ADR `0044` |
 | D74 | Public API | The shipped mod exposes **one remote interface** (`snapshot`, `act`, `api_version`) — a separate mod cannot read another mod's `storage`, so without it no automated harness exists. It grants nothing the console does not already grant. **Corrects the wording of D70/ADR `0042`**: the mod ships no *test assertions*, but it does ship this API | ADR `0042` (corrected), `specs/001-v1/design.md` §5 |
+| D75 | No power | The counter **draws nothing**: no pole, no fuel, no closed state. The spaceport feeds it, from orbit. The only placement rule left is the **minimum distance** between two counters; the anchor is now the recipe's cost alone | ADR `0046` |
 
 ### 1.2 Success indicators (observable) — **accepted by Philippe on 2026-10-25**
 
@@ -326,7 +327,7 @@ API for third-party mods beyond the add-on interface, final art.
 | A19 | The header's two numbers always satisfy `available + reserved = total` for the cooperative (D61) |
 | A20 | At 100 % and at 150 % GUI scale, **no text is truncated and no control falls outside the window** |
 | A21 | Every visible string exists in **both** `locale/en` and `locale/fr`; a missing key shows as the key itself and is a failure, not a fallback |
-| A22 | An action button is **never enabled when the action would fail** (no coverage, no goods in the hub, no power) |
+| A22 | An action button is **never enabled when the action would fail** (no coverage, no goods in the hub) |
 | A23 | The quantity field and the presets **never disagree**: a preset writes the field, and the action always acts on the displayed value |
 | A24 | No preset can exceed what the balance allows; a preset that would is **clamped and displays the clamped value before the click** |
 | A25 | The built archive contains **no key, no token, no absolute path**, and the mod declares no dependency that can reach the network |
@@ -527,7 +528,7 @@ resolved with its feature, not before.
 | ~~Q55~~ | ~~Quantity control?~~ → **a field with presets** `1/10/100/stack`, one shared value (D63, ADR `0038`) | — | Philippe | **settled 2026-10-25** |
 | ~~Q56~~ | ~~Per-force economy?~~ → **separate per force** (D69, ADR `0041`): each force has its own ledger, contracts and stock; nothing crosses a force boundary | — | Philippe | **settled 2026-10-25** |
 | ~~Q57~~ | ~~The elevator car: A or B?~~ → **route A** for v1 (D73); route B parked in `comptoir-freight` after a spike | — | Philippe | **settled 2026-10-25** |
-| Q58 | **The counter's entity type**: keep a `container` and **drop the power draw** (Option A), or move to an energy-capable machine to keep power **and** gain a working animation for the elevator (Option B, needs a GUI spike)? | A keeps the plan and loses the anchor; B buys the whole visual identity at the price of one spike. Measured on 2.1.23: containers have no energy model at all | Philippe | lot a |
+| ~~Q58~~ | ~~The counter's entity type?~~ → **no draw**: the spaceport feeds it (D75, ADR `0046`); the counter stays a `container`, the closed state and the working animation go away | — | Philippe | **settled 2026-10-25** |
 
 ---
 

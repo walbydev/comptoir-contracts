@@ -70,8 +70,7 @@ down, with the remaining time on the button itself (A29).
 
 | State | What the window shows |
 |---|---|
-| **unpowered** | every action disabled, one line: *no power, counter closed* (D49) |
-| **pot at zero** | header shows `available 0 · reserved 0`, contracts cannot be accepted, the counter tab still accepts **sales** (that is the way back — A14) |
+| **cooperative at zero** | header shows `available 0 · reserved 0`, contracts cannot be accepted, the counter tab still accepts **sales** (that is the way back — A14) |
 | **no contract offerable** | the slot says *nothing available* — with the reason if it is research, because a silent empty slot reads as a bug |
 | **contract expired while the window is open** | the row turns red, the button becomes `ACCEPT` again after the next refill, and the reserve is already gone from the header |
 
@@ -81,8 +80,7 @@ down, with the remaining time on the button itself (A29).
 - **A20**: at 100 % GUI scale and at 150 %, no text is truncated and no control is out of the window.
 - **A21**: every visible string exists in both `locale/en` and `locale/fr` — a missing key shows as the
   key itself, which is a failure, not a fallback.
-- **A22**: an action button is never enabled when the action would fail (no coverage, no goods,
-  no power).
+- **A22**: an action button is never enabled when the action would fail (no coverage, no goods).
 
 ## 6. Closed — both, in each case (ADR 0038)
 

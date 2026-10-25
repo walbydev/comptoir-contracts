@@ -30,7 +30,7 @@ syntax error. No window exists: everything is driven through the remote interfac
 | **b1** | Window frame, tabs, permanent header (company, character, `available · reserved`) | header reconciles with `storage` on every mutation (A19) |
 | **b2** | Contract row: icon, quantity, payout, reserve, digits + bar, contextual button | A1 (first contract end to end under 30 min) |
 | **b3** | Counter tab: 16 rows, price and buy-back, quantity field + `1/10/100/stack` presets, clamping | A22, A23, A24 by eye; the clamp asserted in L2 |
-| **b4** | The four window states: unpowered, zero pot, nothing to offer, expiry while open | each state reproduced on purpose and screenshotted |
+| **b4** | The three window states: a cooperative at zero, nothing to offer, an expiry while open (the unpowered state is gone — D75) | each state reproduced on purpose and screenshotted |
 | **b5** | Locale: every key in `en` and `fr` | A21 key-parity check green |
 | **b6** | Remaining L2 tests: A2, A7, A9, A10, A26, A28 | `make test` green, 17 scenarios |
 | **b7** | Static checks: A16 (no oil in the counter's recipe), A17 (tier-1 buildable), A25 (archive clean) | `make check` green, three checks quoted |
