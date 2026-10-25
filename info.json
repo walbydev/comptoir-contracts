@@ -1,7 +1,7 @@
 {
   "name": "comptoir-contracts",
-  "version": "0.1.0",
-  "title": "Comptoir — Contracts",
+  "version": "0.1.1",
+  "title": "Comptoir \u2014 Contracts",
   "author": "Philippe Ryf",
   "description": "Distant trading companies post delivery contracts at a commercial counter. Fill them, get paid in credits, spend the credits on materials at the counter. One hub, one company, one cooperative account.",
   "factorio_version": "2.1",
