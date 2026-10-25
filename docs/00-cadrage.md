@@ -1,8 +1,8 @@
 # Framing — Comptoir: company contracts (Factorio 2.1 mod)
 
 > Version: 1.0 · Date: 2026-10-25 · Requested by: Philippe Ryf
-> Status: **all ten blocks CLOSED** (2026-10-25) — **68 decisions in force**, 11 withdrawn
-> (Appendix C), 53 ADRs (35 in force), 31 acceptance criteria, **no question left blocking v1**,
+> Status: **all ten blocks CLOSED** (2026-10-25) — **70 decisions in force**, 11 withdrawn
+> (Appendix C), 55 ADRs (36 in force), 31 acceptance criteria, **no question left blocking v1**,
 > 12 open questions, all belonging to parked features.
 > Repository: `walbydev/comptoir-contracts` (public GitHub, MIT) — created and verified 2026-10-25.
 > No development before tag `v0.1-cadrage`.
@@ -170,6 +170,8 @@ onto what already exists.
 | D76 | Money target | A contract targets **money, not tonnage**: `qty = clamp(round(target_tier / payout_per_unit), 1, 500)`, floor **one unit**. Target **per tier**: 2 500 / 7 500 / 20 000, and a company's tier is read from the player's research, never stored | ADR `0047`, `0048` |
 | D77 | Deadline unit | The deadline measures the **whole recipe tree**, not the item's own crafting time: `chain_seconds` is measured by `tools/cost_table.py` and ships in the price data. Ten processing units are 266.7 s of chain per unit → **35:20**, not the 6:00 the last-machine figure gave | ADR `0048` |
 | D78 | Contract cap | The cap of three counts **live contracts** (offered + accepted + in flight), not offers: the generator fills `3 − live`, so accepting never frees a slot, and a fourth contract is refused with `no_free_slot` | ADR `0051` |
+| D79 | Inventory access | **Parked in the header**: a button hands the entity back to the engine (`player.opened = entity`), because the window replaced the vanilla inventory; a per-player handover flag stops `on_gui_opened` from taking it straight back. The player's own `E` screen is untouched | ADR `0057` |
+| D80 | Live elevator | The car's state and its remaining time are in the header, every action is **paused** while it is not down, and a single **feedback line** answers every buy, sell, accept or refusal. A bounded clock (`on_nth_tick(30)`) lives only while a window is open | ADR `0056` |
 
 **Eleven decisions are not listed here.** They were withdrawn, replaced or suspended, and
 nothing in force depends on them; they are kept in **Appendix C** so the history stays
