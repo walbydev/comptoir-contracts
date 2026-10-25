@@ -19,6 +19,11 @@
 --                           keys are literals in `REASON_KEYS` / `GROUP_KEYS` instead of
 --                           concatenations, and `tools/check_locale.py` refuses the old shape at
 --                           `make check` (ADR 0053)
+--              2026-10-25 — A20: every row is the exact sum of its cells. Fixed widths on the prices,
+--                           the buttons and the tabs; pinned labels (`single_line`, `maximal_width`)
+--                           for the names and the figures; explicit `horizontal_spacing`; frame width
+--                           = `ROW_WIDTH` + 2 x `PADDING`. The sums are asserted at load and proved
+--                           by scenario B1-gui-pure from `M.GEOMETRY`
 -- Usages:      required by control.lua, wired to on_gui_opened / on_gui_closed / on_gui_click /
 --              on_gui_text_changed; the pure part lives in scripts/gui/format.lua
 -- Notes:       THE WINDOW IS NOT TESTABLE HEADLESS (ADR 0050). The measured prerequisite is the
@@ -35,20 +40,29 @@
 --              THE WIDTH IS SET ONCE, at creation, and never written again: `style.width` pins both
 --              minimal and maximal width, so a row that gains or loses content cannot move a button
 --              sideways. The height follows the content, but the content is a bounded number of rows
---              per tab (at most `offer_slots` contract rows, sixteen shop rows), so nothing inside a
+--              per tab (at most `offer_slots` contract rows, fifteen shop rows), so nothing inside a
 --              tab ever moves either: every live contract is a row and the missing ones are drawable
 --              placeholders, up to `offer_slots` (ADR 0051 — the cap is the module's, the window has
 --              no display limit of its own).
+--              EVERY ROW IS THE SUM OF ITS CELLS (A20). Lot (b) drew its buttons outside the frame and
+--              cut two labels at the right edge: a button had no width, so its localised caption made
+--              the row longer than the frame, and a label grew with its text. The frame is now
+--              `ROW_WIDTH + 2 x PADDING` wide, every row declares `style.width = ROW_WIDTH` and
+--              `horizontal_spacing = SPACING`, every label is pinned (`style.width`, `single_line`,
+--              `maximal_width`), and the flexible columns are the remainder of the fixed ones. The
+--              sums are asserted at load, so a cell that does not add up is a load error, not a row on
+--              the sand; `M.GEOMETRY` carries the same numbers to the bench (scenario B1-gui-pure).
 --              THE SHOP QUANTITY IS ONE NUMBER (docs/06 §6). A shared field cannot be clamped per
---              row, because sixteen rows would need sixteen different ceilings; it is therefore
+--              row, because fifteen rows would need fifteen different ceilings; it is therefore
 --              clamped to the ceiling of the CHEAPEST catalogue item, which is the loosest bound any
 --              row can honour (never blocking a purchase the cooperative can pay for), and each row's
 --              BUY is disabled the moment the displayed number exceeds that row's own ceiling. A24 is
 --              satisfied where it is measurable: no clickable quantity is above what the balance
 --              allows for the row being clicked.
 --              NO STYLING (mission lot b): no style prototype, no animation, no icon of our own. The
---              only geometry set is the width of a label, the size of the item sprites, and the
---              colour of the character line (ADR 0022 asks for a colour per company).
+--              geometry set is the width of every cell, the spacing of every row, the four paddings of
+--              the frame, the size of the item sprites and the colour of the character line (ADR 0022
+--              asks for a colour per company).
 -- Licence:     MIT (see LICENSE)
 
 local format = require("__comptoir-contracts__/scripts/gui/format")
@@ -88,18 +102,90 @@ local QUANTITY_LABEL = "comptoir_quantity_label"
 -- on live contracts (ADR 0051). The window never slices the list to it — every live contract is drawn.
 local CONTRACT_SLOTS = balance.contracts.offer_slots
 
--- Geometry. Widths only, and only where a column must line up (mission: ugly but correct).
-local WIDTH = 640
-local HALF = 300
+-- Geometry. Every width is a number of pixels decided here, and a row is the exact sum of its cells
+-- plus the spacing between them. Lot (b) shipped rows whose buttons were drawn outside the frame and
+-- whose last two labels were cut at the right edge (A20): a button carries no width of its own, so its
+-- caption decided how long the row was, and the French captions are longer than the English ones.
+-- Nothing below is left to the layout to guess: the fixed cells are declared, the flexible ones are
+-- remainders computed from them, and the frame is `ROW_WIDTH` plus its two paddings wide.
+local ROW_WIDTH = 720   -- the content width of a row, and therefore of the frame minus its padding
+local PADDING = 12      -- frame padding, set explicitly on the four sides (never the style default)
+local SPACING = 8       -- horizontal_spacing of every row, set explicitly (never the flow default)
+local ICON_SHOP = 20
+local ICON_CONTRACT = 32
+local COL_PRICE = 96      -- shop: the buy price, right aligned
+local COL_CREDITS = 96    -- shop: the buy-back price, right aligned
+local COL_BUY = 96        -- shop: the BUY button
+local COL_SELL = 96       -- shop: the SELL button
+local COL_TIME = 208      -- contract: payout, bar and clock
+local COL_ACTION = 140    -- contract: the one contextual button
+local COL_COMPANY = 240   -- header: the company name
+local FIELD_WIDTH = 90    -- shop: the shared quantity field
+local PRESET_WIDTH = 80   -- shop: each of the four preset buttons
+local BAR_WIDTH = 100     -- contract: the deadline bar inside the time column
 local ROW_HEIGHT = 48
 local SHOP_ROW_HEIGHT = 28
-local COL_ITEM = 280
-local COL_TIME = 180
-local COL_ACTION = 110
-local COL_PRICE = 90
-local COL_CREDITS = 100
-local BAR_WIDTH = 100
-local FIELD_WIDTH = 80
+
+-- The flexible columns are remainders, computed once from the fixed cells. The width of a row is
+-- therefore a fact of this file, not a hope about the font the player runs.
+local COL_NAME = ROW_WIDTH - (ICON_SHOP + COL_PRICE + COL_CREDITS + COL_BUY + COL_SELL) - 5 * SPACING
+local COL_LEFT = ROW_WIDTH - (ICON_CONTRACT + COL_TIME + COL_ACTION) - 3 * SPACING
+local COL_CHARACTER = ROW_WIDTH - COL_COMPANY - SPACING
+local COL_CHARACTER_TEXT = COL_CHARACTER - ICON_SHOP - SPACING
+local COL_CLOCK = COL_TIME - BAR_WIDTH - SPACING
+local NUM_CELL = (ROW_WIDTH - SPACING) / 2
+local COL_QUANTITY_LABEL = ROW_WIDTH - (FIELD_WIDTH + 4 * PRESET_WIDTH) - 5 * SPACING
+local FRAME_WIDTH = ROW_WIDTH + 2 * PADDING
+
+-- The cell widths of every row, in drawing order: the guard below sums them, and the bench reads
+-- `M.GEOMETRY` to prove the same sums without a client (ADR 0050: the frame is not testable, its
+-- arithmetic is).
+M.GEOMETRY = {
+  row_width = ROW_WIDTH,
+  padding = PADDING,
+  spacing = SPACING,
+  frame_width = FRAME_WIDTH,
+  shop_row = { ICON_SHOP, COL_NAME, COL_PRICE, COL_CREDITS, COL_BUY, COL_SELL },
+  contract_row = { ICON_CONTRACT, COL_LEFT, COL_TIME, COL_ACTION },
+  header_line = { COL_COMPANY, COL_CHARACTER },
+  header_character = { ICON_SHOP, COL_CHARACTER_TEXT },
+  header_numbers = { NUM_CELL, NUM_CELL },
+  quantity_line = { COL_QUANTITY_LABEL, FIELD_WIDTH, PRESET_WIDTH, PRESET_WIDTH, PRESET_WIDTH, PRESET_WIDTH },
+  contract_time = { BAR_WIDTH, COL_CLOCK },
+}
+
+-- Checked while control.lua is parsed: a row whose cells and spacing do not fill exactly its width is
+-- the lot (b) bug again, and a load error with the row's name is a better reader than a button drawn
+-- on the sand (A20). The two nested flows are measured against their own column, not against the row.
+do
+  local rows = {
+    { "shop_row", M.GEOMETRY.shop_row, ROW_WIDTH },
+    { "contract_row", M.GEOMETRY.contract_row, ROW_WIDTH },
+    { "header_line", M.GEOMETRY.header_line, ROW_WIDTH },
+    { "header_numbers", M.GEOMETRY.header_numbers, ROW_WIDTH },
+    { "quantity_line", M.GEOMETRY.quantity_line, ROW_WIDTH },
+    { "header_character", M.GEOMETRY.header_character, COL_CHARACTER },
+    { "contract_time", M.GEOMETRY.contract_time, COL_TIME },
+  }
+  for _, entry in ipairs(rows) do
+    local label, cells, expected = entry[1], entry[2], entry[3]
+    local total = (#cells - 1) * SPACING
+    for index, width in ipairs(cells) do
+      if type(width) ~= "number" or width <= 0 or width % 1 ~= 0 then
+        error("[comptoir] gui.window: " .. label .. " cell " .. index .. " is not a positive whole "
+          .. "number of pixels (" .. tostring(width) .. ")")
+      end
+      total = total + width
+    end
+    if total ~= expected then
+      error("[comptoir] gui.window: " .. label .. " sums to " .. tostring(total) .. " px, not "
+        .. tostring(expected) .. " — a row that does not fill its width draws outside the frame")
+    end
+  end
+  if FRAME_WIDTH ~= ROW_WIDTH + 2 * PADDING then
+    error("[comptoir] gui.window: the frame is not its content plus two paddings")
+  end
+end
 
 -- Per player, never in `storage`: the tab shown, the number in the shop field, and the hub the window
 -- is bound to. Lost on reload, rebuilt by reopening the counter.
@@ -239,6 +325,41 @@ local function icon(parent, name, item, size)
   return sprite
 end
 
+-- A label that occupies its column and nothing else. `style.width` pins the minimal AND maximal width,
+-- so the cell cannot grow with its text; `single_line` refuses to wrap, and `maximal_width` is what
+-- makes a long caption truncate inside its own cell instead of pushing the rest of the row out of the
+-- frame (A20). `single_line` only exists for labels: a button is pinned by `button_cell` below.
+local function cell(label, width, align)
+  label.style.single_line = true
+  label.style.maximal_width = width
+  label.style.width = width
+  if align ~= nil then
+    label.style.horizontal_align = align
+  end
+  return label
+end
+
+-- A button of fixed width. Its caption is a locale string, and no runtime API measures a string, so
+-- the widths below are sized for the longest caption of the two locales ("EXPÉDIER 1 234" in the
+-- contract row, "ACHETER" in the shop): a caption that outgrew its cell would be clipped by the engine.
+local function button_cell(button, width)
+  button.style.width = width
+  button.style.maximal_width = width
+  return button
+end
+
+-- A row of the window: full width, explicit spacing, so its cells are the only thing that decides
+-- where a column starts.
+local function full_row(parent, entry, height)
+  local row = parent.add(entry)
+  row.style.width = ROW_WIDTH
+  row.style.horizontal_spacing = SPACING
+  if height ~= nil then
+    row.style.height = height
+  end
+  return row
+end
+
 -- ---------------------------------------------------------------------------------------------------
 -- The frame: built once per open, never resized afterwards
 -- ---------------------------------------------------------------------------------------------------
@@ -250,34 +371,39 @@ local function build(player)
     direction = "vertical",
     caption = { "entity-name.comptoir-counter" },
   })
-  -- Written exactly once in the life of the frame (docs/06 §1: the header never moves).
-  root.style.width = WIDTH
+  -- Written exactly once in the life of the frame (docs/06 §1: the header never moves). The padding is
+  -- set here rather than inherited, because the frame's width is the sum of its widest row plus these
+  -- two paddings and nothing else (A20).
+  root.style.left_padding = PADDING
+  root.style.right_padding = PADDING
+  root.style.top_padding = PADDING
+  root.style.bottom_padding = PADDING
+  root.style.width = FRAME_WIDTH
 
   local header = root.add({ type = "flow", name = HEADER, direction = "vertical" })
+  header.style.width = ROW_WIDTH
 
-  local line = header.add({ type = "flow", name = HEADER_LINE, direction = "horizontal" })
-  local company = line.add({ type = "label", name = HEADER_COMPANY, caption = "" })
-  company.style.width = COL_ITEM + 40
+  local line = full_row(header, { type = "flow", name = HEADER_LINE, direction = "horizontal" })
+  cell(line.add({ type = "label", name = HEADER_COMPANY, caption = "" }), COL_COMPANY)
 
   local character = line.add({ type = "flow", name = HEADER_CHARACTER, direction = "horizontal" })
-  icon(character, HEADER_ICON, CHEAPEST, 20)
-  local text = character.add({ type = "label", name = HEADER_TEXT, caption = "" })
-  text.style.single_line = true
+  character.style.width = COL_CHARACTER
+  character.style.horizontal_spacing = SPACING
+  icon(character, HEADER_ICON, CHEAPEST, ICON_SHOP)
+  cell(character.add({ type = "label", name = HEADER_TEXT, caption = "" }), COL_CHARACTER_TEXT)
 
-  local numbers = header.add({ type = "flow", name = HEADER_NUMBERS, direction = "horizontal" })
-  local available = numbers.add({ type = "label", name = HEADER_AVAILABLE, caption = "" })
-  available.style.width = HALF
-  available.style.horizontal_align = "right"
-  local reserved = numbers.add({ type = "label", name = HEADER_RESERVED, caption = "" })
-  reserved.style.width = HALF
-  reserved.style.horizontal_align = "right"
+  local numbers = full_row(header, { type = "flow", name = HEADER_NUMBERS, direction = "horizontal" })
+  cell(numbers.add({ type = "label", name = HEADER_AVAILABLE, caption = "" }), NUM_CELL, "right")
+  cell(numbers.add({ type = "label", name = HEADER_RESERVED, caption = "" }), NUM_CELL, "right")
 
-  local tabbar = root.add({ type = "flow", name = TABS, direction = "horizontal" })
-  tabbar.add({ type = "button", name = TAB_CONTRACTS, caption = { "comptoir.tab-contracts" } })
-  tabbar.add({ type = "button", name = TAB_SHOP, caption = { "comptoir.tab-shop" } })
+  local tabbar = full_row(root, { type = "flow", name = TABS, direction = "horizontal" })
+  button_cell(tabbar.add({ type = "button", name = TAB_CONTRACTS, caption = { "comptoir.tab-contracts" } }), NUM_CELL)
+  button_cell(tabbar.add({ type = "button", name = TAB_SHOP, caption = { "comptoir.tab-shop" } }), NUM_CELL)
 
-  root.add({ type = "flow", name = BODY_CONTRACTS, direction = "vertical" })
-  root.add({ type = "flow", name = BODY_SHOP, direction = "vertical" })
+  for _, name in ipairs({ BODY_CONTRACTS, BODY_SHOP }) do
+    local body = root.add({ type = "flow", name = name, direction = "vertical" })
+    body.style.width = ROW_WIDTH
+  end
 
   return root
 end
@@ -330,45 +456,46 @@ end
 -- ---------------------------------------------------------------------------------------------------
 
 local function draw_contract_row(body, contract, ctx, storage, tick)
-  local row = body.add({ type = "flow", name = "contracts-" .. contract.id .. "-row", direction = "horizontal" })
-  row.style.height = ROW_HEIGHT
+  local row = full_row(body, { type = "flow", name = "contracts-" .. contract.id .. "-row", direction = "horizontal" }, ROW_HEIGHT)
 
-  icon(row, "contracts-" .. contract.id .. "-icon", contract.item, 32)
+  icon(row, "contracts-" .. contract.id .. "-icon", contract.item, ICON_CONTRACT)
 
   local left = row.add({ type = "flow", direction = "vertical" })
-  left.style.width = COL_ITEM
+  left.style.width = COL_LEFT
   local texts = format.row_texts(contract, contracts.time_left(contract, tick))
-  left.add({
+  cell(left.add({
     type = "label",
     name = "contracts-" .. contract.id .. "-quantity",
     caption = { "comptoir.quantity-of", texts.quantity, { "item-name." .. contract.item } },
-  })
-  left.add({
+  }), COL_LEFT)
+  cell(left.add({
     type = "label",
     name = "contracts-" .. contract.id .. "-reserve",
     caption = { "comptoir.reserve", texts.reserve },
-  })
+  }), COL_LEFT)
 
   local right = row.add({ type = "flow", direction = "vertical" })
   right.style.width = COL_TIME
-  right.add({
+  cell(right.add({
     type = "label",
     name = "contracts-" .. contract.id .. "-payout",
     caption = { "comptoir.money", texts.payout },
-  })
+  }), COL_TIME)
   local timeline = right.add({ type = "flow", direction = "horizontal" })
+  timeline.style.width = COL_TIME
+  timeline.style.horizontal_spacing = SPACING
   local bar = timeline.add({ type = "progressbar", name = "contracts-" .. contract.id .. "-bar", value = texts.fraction })
   bar.style.width = BAR_WIDTH
-  timeline.add({
+  cell(timeline.add({
     type = "label",
     name = "contracts-" .. contract.id .. "-time",
     caption = texts.clock,
-  })
+  }), COL_CLOCK)
 
   -- The one contextual button of the row (docs/06 §2). Its verdict is the module's (A22).
   local action, allowed, _, stock = contracts.action_of(ctx.state, storage, ctx.force_index, ctx.company, contract)
   local button = row.add({ type = "button", name = "contracts-" .. contract.id .. "-action", caption = "" })
-  button.style.width = COL_ACTION
+  button_cell(button, COL_ACTION)
   if action == "accept" then
     button.caption = { "comptoir.action-accept" }
     button.enabled = allowed == true
@@ -386,34 +513,29 @@ local function draw_contract_row(body, contract, ctx, storage, tick)
 end
 
 local function draw_empty_slot(body, slot)
-  local row = body.add({ type = "flow", name = "contracts-slot-" .. slot .. "-empty", direction = "horizontal" })
-  row.style.height = ROW_HEIGHT
-  row.add({ type = "label", name = "contracts-slot-" .. slot .. "-empty-label", caption = { "comptoir.empty-slot" } })
+  local row = full_row(body, { type = "flow", name = "contracts-slot-" .. slot .. "-empty", direction = "horizontal" }, ROW_HEIGHT)
+  cell(row.add({ type = "label", name = "contracts-slot-" .. slot .. "-empty-label", caption = { "comptoir.empty-slot" } }), ROW_WIDTH)
   return row
 end
 
 local function draw_shop_row(body, item, ctx, quantity)
   local quote = counter.quote(item)
-  local row = body.add({ type = "flow", name = "counter-" .. item .. "-row", direction = "horizontal" })
-  row.style.height = SHOP_ROW_HEIGHT
+  local row = full_row(body, { type = "flow", name = "counter-" .. item .. "-row", direction = "horizontal" }, SHOP_ROW_HEIGHT)
 
-  icon(row, "counter-" .. item .. "-icon", item, 20)
+  icon(row, "counter-" .. item .. "-icon", item, ICON_SHOP)
 
-  local name = row.add({ type = "label", name = "counter-" .. item .. "-name", caption = { "item-name." .. item } })
-  name.style.width = COL_ITEM
+  -- The item name is the flexible column: it takes what the fixed cells leave, truncates inside it
+  -- (a long localised name must not push the prices and the buttons out of the frame), and never wraps.
+  cell(row.add({ type = "label", name = "counter-" .. item .. "-name", caption = { "item-name." .. item } }), COL_NAME)
 
-  local price = row.add({ type = "label", name = "counter-" .. item .. "-price", caption = { "comptoir.money", format.grouped(quote.buy_price) } })
-  price.style.width = COL_PRICE
-  price.style.horizontal_align = "right"
+  cell(row.add({ type = "label", name = "counter-" .. item .. "-price", caption = { "comptoir.money", format.grouped(quote.buy_price) } }), COL_PRICE, "right")
 
-  local credits = row.add({ type = "label", name = "counter-" .. item .. "-buy-back", caption = { "comptoir.buy-back", format.grouped(quote.sell_credits) } })
-  credits.style.width = COL_CREDITS
-  credits.style.horizontal_align = "right"
+  cell(row.add({ type = "label", name = "counter-" .. item .. "-buy-back", caption = { "comptoir.buy-back", format.grouped(quote.sell_credits) } }), COL_CREDITS, "right")
 
   local buy_enabled, sell_enabled = shop_gates(ctx, item, quantity)
-  local buy = row.add({ type = "button", name = "counter-" .. item .. "-buy", caption = { "comptoir.buy" } })
+  local buy = button_cell(row.add({ type = "button", name = "counter-" .. item .. "-buy", caption = { "comptoir.buy" } }), COL_BUY)
   buy.enabled = buy_enabled
-  local sell = row.add({ type = "button", name = "counter-" .. item .. "-sell", caption = { "comptoir.sell" } })
+  local sell = button_cell(row.add({ type = "button", name = "counter-" .. item .. "-sell", caption = { "comptoir.sell" } }), COL_SELL)
   sell.enabled = sell_enabled
   return row
 end
@@ -421,12 +543,13 @@ end
 local function draw_shop(body, ctx, player)
   local quantity = quantity_of(player.index)
 
-  local line = body.add({ type = "flow", name = QUANTITY_LINE, direction = "horizontal" })
-  line.add({ type = "label", name = QUANTITY_LABEL, caption = { "comptoir.quantity-label" } })
+  local line = full_row(body, { type = "flow", name = QUANTITY_LINE, direction = "horizontal" })
+  cell(line.add({ type = "label", name = QUANTITY_LABEL, caption = { "comptoir.quantity-label" } }), COL_QUANTITY_LABEL)
   local field = line.add({ type = "textfield", name = QUANTITY_FIELD, text = tostring(quantity), numeric = true })
   field.style.width = FIELD_WIDTH
+  field.style.maximal_width = FIELD_WIDTH
   for _, preset in ipairs({ "1", "10", "100", "stack" }) do
-    local button = line.add({ type = "button", name = "counter-quantity-" .. preset, caption = "" })
+    local button = button_cell(line.add({ type = "button", name = "counter-quantity-" .. preset, caption = "" }), PRESET_WIDTH)
     if preset == "stack" then
       button.caption = { "comptoir.preset-stack" }
     else

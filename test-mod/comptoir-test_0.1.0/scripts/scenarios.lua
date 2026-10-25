@@ -20,6 +20,10 @@
 --              2026-10-25 — lot b fix: B1-gui-pure checks that every refusal reason carries a literal
 --                           caption, and hands four of the window's keys to the engine so the runner
 --                           can read the rendered text (H.probe_locale, ADR 0053)
+--              2026-10-25 — A20: B1-gui-pure sums the window's geometry — every row is the exact sum
+--                           of its cells plus the spacing, and the frame is that content plus two
+--                           paddings, so a button cannot be drawn outside it. The shop ladder is 15
+--                           items: `pipe` left the catalogue (ADR 0052)
 -- Usages:      required by control.lua of the test mod, queued by `scenario.lua`
 -- Notes:       THE NUMBERS ARE RECOMPUTED FROM THE DATA, NEVER COPIED FROM THE MOD. The test mod
 --              requires `data/prices.lua` and `config/balance.lua` of the mod under test and derives
@@ -1563,6 +1567,68 @@ M["b1-gui-pure"] = {
     H.ok(type(gui_window.on_text_changed) == "function", "B1-gui-pure: the window exposes on_text_changed")
     H.at_least(#gui_window.REASONS, 20, "B1-gui-pure: every refusal reason is listed for the locale audit")
 
+    -- A20: the geometry is arithmetic, and it is asserted here because the frame itself cannot be built
+    -- without a client (ADR 0050). The requester's screenshot showed the two buttons drawn outside the
+    -- frame, on the sand, and two labels cut at the right edge: a button carried no width, so its French
+    -- caption decided how long the row was. Every row must now be the exact sum of its cells plus the
+    -- spacing between them, and the frame must be that content plus its two paddings.
+    local geometry = gui_window.GEOMETRY
+    H.eq(type(geometry), "table", "B1-gui-pure: the window publishes its geometry")
+    local function row_sum(cells)
+      local total = (#cells - 1) * geometry.spacing
+      for _, width in ipairs(cells) do
+        total = total + width
+      end
+      return total
+    end
+    H.eq(row_sum(geometry.shop_row), geometry.row_width, "A20: the shop row fills the window exactly")
+    H.eq(row_sum(geometry.contract_row), geometry.row_width, "A20: the contract row fills it too")
+    H.eq(row_sum(geometry.header_line), geometry.row_width, "A20: the header line fills it")
+    H.eq(row_sum(geometry.header_numbers), geometry.row_width, "A20: the two header figures share it")
+    H.eq(row_sum(geometry.quantity_line), geometry.row_width, "A20: the quantity line fills it")
+    H.eq(
+      row_sum(geometry.header_character),
+      geometry.header_line[2],
+      "A20: the character flow fits inside its column"
+    )
+    H.eq(
+      row_sum(geometry.contract_time),
+      geometry.contract_row[3],
+      "A20: the bar and the clock fit inside the time column"
+    )
+    H.eq(
+      geometry.frame_width,
+      geometry.row_width + 2 * geometry.padding,
+      "A20: the frame is its content plus two paddings"
+    )
+
+    -- Nothing is positioned by flow alone: every cell is a positive whole number of pixels, so a
+    -- truncated name or a longer caption cannot move a neighbour out of the frame.
+    local cells_ok = true
+    local cell_count = 0
+    for _, name in ipairs({
+      "shop_row", "contract_row", "header_line", "header_numbers", "quantity_line",
+      "header_character", "contract_time",
+    }) do
+      for _, width in ipairs(geometry[name]) do
+        cell_count = cell_count + 1
+        if type(width) ~= "number" or width <= 0 or width % 1 ~= 0 then
+          cells_ok = false
+        end
+      end
+    end
+    H.ok(cells_ok, "A20: every one of the " .. cell_count .. " cells is a positive whole number of pixels")
+    H.at_least(
+      geometry.shop_row[2],
+      120,
+      "A20: the item name keeps a usable flexible column (" .. geometry.shop_row[2] .. " px)"
+    )
+    H.at_least(
+      geometry.contract_row[4],
+      100,
+      "A20: the action button holds the longest caption of the two locales (" .. geometry.contract_row[4] .. " px)"
+    )
+
     local reasons_ok = true
     for _, reason in ipairs(gui_window.REASONS) do
       if type(reason) ~= "string" or #reason < 3 or reason:find("%s") ~= nil then
@@ -1705,9 +1771,11 @@ M["b1-gui-pure"] = {
       "B1-gui-pure: a stack the balance covers is one stack"
     )
 
-    -- The shop ladder: sixteen rows, cheapest first, deterministic.
+    -- The shop ladder: fifteen rows, cheapest first, deterministic. `pipe` left the catalogue
+    -- (ADR 0052: the game names it as an entity, not as an item), so the count follows the data.
     local order = gui_format.price_order()
-    H.eq(#order, 16, "B1-gui-pure: the counter tab lists 16 items")
+    H.eq(#order, 15, "B1-gui-pure: the counter tab lists 15 items")
+    H.eq(#order, prices.item_count, "B1-gui-pure: and that is the count data/prices.lua declares")
     H.eq(order[1], "copper-cable", "B1-gui-pure: the cheapest item opens the ladder")
     H.eq(order[#order], "processing-unit", "B1-gui-pure: the dearest item closes it")
     local sorted = true

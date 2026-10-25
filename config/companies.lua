@@ -64,9 +64,10 @@ M.weights = {
 -- combinations: reaching it means the force already holds a lot of counters.
 M.name_attempts = 40
 
--- Which group each item of the catalogue belongs to. The catalogue is `data/prices.lua` (16 items,
+-- Which group each item of the catalogue belongs to. The catalogue is `data/prices.lua` (15 items,
 -- measured); this map is the commercial reading of it: what the company trades, not what the recipe
--- tree says.
+-- tree says. `pipe` is not here: the game names it as an entity only, so it left the catalogue
+-- (ADR 0052), and a group for an item nobody can buy is data that never gets read.
 M.items = {
   ["copper-cable"] = "electronics",
   ["electronic-circuit"] = "electronics",
@@ -78,7 +79,6 @@ M.items = {
   ["iron-plate"] = "logistics",
   ["copper-plate"] = "logistics",
   ["steel-plate"] = "logistics",
-  ["pipe"] = "logistics",
   ["iron-gear-wheel"] = "logistics",
   ["engine-unit"] = "logistics",
   ["stone-brick"] = "logistics",

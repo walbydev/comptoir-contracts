@@ -45,10 +45,12 @@ prices:
 prices-md:
 	python3 tools/cost_table.py --markdown
 
-# The L1 gate: a PR is green on `make check` or it is not green. Both halves are here for that reason
-# — `check-locale` is not a target someone has to remember to run (ADR 0053: the window shipped with
-# every caption reading "Unknown key" while this file's syntax half was green).
-check: check-lua check-locale
+# The L1 gate: a PR is green on `make check` or it is not green. All three halves are here for that
+# reason — `check-locale` is not a target someone has to remember to run (ADR 0053: the window shipped
+# with every caption reading "Unknown key" while this file's syntax half was green), and neither is
+# `check-items` (ADR 0052: the shop listed `pipe`, which the game names as an entity, not as an item).
+# `check-items` reads the game's own base locale, so it needs FACTORIO like `test` does.
+check: check-lua check-locale check-items
 
 check-lua:
 	@files=$$(find . -name '*.lua' -not -path './.git/*'); \
@@ -60,6 +62,12 @@ check-lua:
 # files, every declared key must be printed somewhere, and every key name must match [a-z0-9-]+.
 check-locale:
 	python3 tools/check_locale.py
+
+# Every item of `data/prices.lua` must be named under `[item-name]` in the base locale of `en` AND of
+# `fr` (ADR 0052), and `item_count` must match the rows present. The names are read from the game's own
+# locale directory; the game is located from $(FACTORIO), the same knob `test` uses.
+check-items:
+	python3 tools/check_item_names.py --factorio "$(FACTORIO)"
 
 # The bench owns its own verdict: tools/run_tests.py starts Factorio once per scenario, in a
 # throwaway install of its own, and exits non-zero when any run is red, when the log carries a Lua
