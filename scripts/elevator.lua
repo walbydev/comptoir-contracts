@@ -7,12 +7,16 @@
 -- Author:      Philippe Ryf
 -- Created:     2026-10-25
 -- Revisions:   2026-10-25 — initial: four states, one flight at a time, absolute phase end (a9)
+--              2026-10-25 — `pause_reason` (ADR 0056 §2): the four states, read as the one answer the
+--                           counter gives every shop action while the car is away
 -- Usages:      required by control.lua, scripts/companies.lua (hub creation) and scripts/contracts.lua
 -- Notes:       NO TICK HANDLER. The trip is two numbers in `storage` — the state and the tick the
 --              current phase ends at — and `advance` walks them whenever something reads (design.md
 --              §3: lazy, never on a clock). A save taken mid-flight therefore resumes exactly where it
 --              was: nothing to reconstruct, nothing to re-arm. This is the whole reason the phases are
---              absolute ticks rather than counters.
+--              absolute ticks rather than counters. The one clock in the mod is the interface's, and
+--              it only measures (`scripts/gui/window.lua`, ADR 0056 §2): a window being open makes
+--              `advance` be called twice a second, and nothing else about this file changes.
 --              ONLY `down` SENDS (A29, ADR 0043): `can_send` is the single gate, and every caller —
 --              the GUI button, the remote API, a future add-on — asks it. There is no second path.
 --              A phase chain that does not end is an error, not a while-loop with a hope: a corrupt
@@ -115,6 +119,19 @@ end
 
 function M.state_of(hub)
   return check(hub, "state_of").state
+end
+
+-- The pause of ADR 0056 §2, in one place. While the car is not down the counter answers nothing at
+-- all — no acceptance, no purchase, no sale, no dispatch — and every caller asks here rather than
+-- re-reading the four states. Returns nil when the counter may speak, or the reason it may not, in
+-- the same `elevator_<state>` vocabulary the dispatch gate already uses (so the window needs no new
+-- refusal caption: it already has one per state).
+function M.pause_reason(hub)
+  local elevator_state = check(hub, "pause_reason").state
+  if elevator_state == M.DOWN then
+    return nil
+  end
+  return "elevator_" .. elevator_state
 end
 
 -- The car leaves. Refuses unless it is down: one flight at a time, per hub (F6, ADR 0043).

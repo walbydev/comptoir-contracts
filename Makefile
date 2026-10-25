@@ -50,7 +50,7 @@ prices-md:
 # with every caption reading "Unknown key" while this file's syntax half was green), and neither is
 # `check-items` (ADR 0052: the shop listed `pipe`, which the game names as an entity, not as an item).
 # `check-items` reads the game's own base locale, so it needs FACTORIO like `test` does.
-check: check-lua check-locale check-items
+check: check-lua check-locale check-items check-artwork
 
 check-lua:
 	@files=$$(find . -name '*.lua' -not -path './.git/*'); \
@@ -62,6 +62,13 @@ check-lua:
 # files, every declared key must be printed somewhere, and every key name must match [a-z0-9-]+.
 check-locale:
 	python3 tools/check_locale.py
+
+# The counter's two pictures: the PNG dimensions and colour type, the numbers the prototypes declare,
+# the 9 x 9 footprint they come from, and `graphics/` on the list `tools/run_tests.py` copies into the
+# throwaway install (ADR 0056 §1). Needs no Factorio: `LuaEntityPrototype` has no `picture` field to ask
+# the game for, so this is the half a running game cannot answer.
+check-artwork:
+	python3 tools/check_artwork.py
 
 # Every item of `data/prices.lua` must be named under `[item-name]` in the base locale of `en` AND of
 # `fr` (ADR 0052), and `item_count` must match the rows present. The names are read from the game's own

@@ -83,6 +83,10 @@ RUNS = [
     ("a30", "A30", None),
     ("a31", "A31", None),
     ("b1-gui-pure", "B1-gui-pure", None),
+    ("b2-pause", "B2-pause", None),
+    ("b3-feedback", "B3-feedback", None),
+    ("b4-clock", "B4-clock", None),
+    ("b5-sprite", "B5-sprite", None),
 ]
 
 SOLVENCY_SETTING = "comptoir-solvency"

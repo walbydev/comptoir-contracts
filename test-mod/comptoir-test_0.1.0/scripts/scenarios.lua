@@ -1011,15 +1011,19 @@ M.a29 = {
     end
 
     local first, second = offers[1], offers[2]
+    -- Both goods go in and both offers are accepted BEFORE the car leaves: since ADR 0056 the counter
+    -- pauses every action while the car is not down, so nothing can be accepted mid-flight any more.
+    -- What A29 is about — only `down` sends — is untouched by the order of the setup.
     inventory_of(entity).insert({ name = first.item, count = first.quantity })
+    inventory_of(entity).insert({ name = second.item, count = second.quantity })
     local accepted_first = act(1, "accept", { company_id = company_id, contract_id = first.id })
     H.ok(accepted_first.ok, "A29: accept the first")
+    local accepted_second = act(1, "accept", { company_id = company_id, contract_id = second.id })
+    H.ok(accepted_second.ok, "A29: accept the second")
+
     local sent = act(1, "dispatch", { company_id = company_id, contract_id = first.id })
     H.ok(sent.ok, "A29: the car leaves with the first contract")
 
-    inventory_of(entity).insert({ name = second.item, count = second.quantity })
-    local accepted_second = act(1, "accept", { company_id = company_id, contract_id = second.id })
-    H.ok(accepted_second.ok, "A29: accept the second")
     local stock_before = inventory_of(entity).get_item_count(second.item)
 
     local seen = {}
@@ -1332,24 +1336,27 @@ M.a31 = {
     H.eq(total_contracts(company_accepted), cap, "A31: no contract was created by the accept")
     H.eq(after_accept.reserved - pot_before_accept.reserved, first.reserve, "A31: only the escrow moved")
 
-    -- Send it: a contract in the air still occupies its slot. The three live states are now in play.
+    -- Accept the second one too, BEFORE the car leaves: since ADR 0056 the counter pauses every action
+    -- while the car is not down, so an acceptance can no longer be arranged mid-flight. The three live
+    -- states this scenario is about are untouched by the order — one accepted, one accepted, one
+    -- offered — and the counts below are the ones the previous order produced.
+    local accepted_second = act(1, "accept", { company_id = company_id, contract_id = second.id })
+    H.ok(accepted_second.ok, "A31: the second offer is accepted (" .. tostring(accepted_second.reason) .. ")")
+    local mixed = snap(1)
+    local company_mixed = company_of(mixed, company_id)
+    H.eq(live_count(company_mixed), cap, "A31: two accepted plus one offered is still three live")
+    H.eq(#offers_of(company_mixed), 1, "A31: exactly one offer is left")
+    H.eq(total_contracts(company_mixed), cap, "A31: ... and the company still holds three contracts in all")
+
+    -- Send it: a contract in the air still occupies its slot, and nothing refills the slot it did not free.
     inventory_of(entity).insert({ name = first.item, count = first.quantity })
     local dispatched = act(1, "dispatch", { company_id = company_id, contract_id = first.id })
     H.ok(dispatched.ok, "A31: dispatch the first contract (" .. tostring(dispatched.reason) .. ")")
     local after_dispatch = snap(1)
     local company_flight = company_of(after_dispatch, company_id)
     H.eq(live_count(company_flight), cap, "A31: a contract in flight still occupies its slot")
-    H.eq(#offers_of(company_flight), cap - 1, "A31: still no refill while live equals the cap")
+    H.eq(#offers_of(company_flight), 1, "A31: still no refill while live equals the cap")
     H.eq(total_contracts(company_flight), cap, "A31: still no fourth contract")
-
-    -- Accept the second offer while the first is in the air: one in flight, two accepted, zero slots.
-    local accepted_second = act(1, "accept", { company_id = company_id, contract_id = second.id })
-    H.ok(accepted_second.ok, "A31: the second offer is accepted while a contract is in flight")
-    local mixed = snap(1)
-    local company_mixed = company_of(mixed, company_id)
-    H.eq(live_count(company_mixed), cap, "A31: one in flight plus two accepted is still three live")
-    H.eq(#offers_of(company_mixed), 1, "A31: exactly one offer is left")
-    H.eq(total_contracts(company_mixed), cap, "A31: ... and the company still holds three contracts in all")
 
     -- The crafted fourth: the bench's raw draw creates a contract the game itself never would.
     local crafted = act(1, "generate", { company_id = company_id, count = 1 })
@@ -1585,6 +1592,8 @@ M["b1-gui-pure"] = {
     H.eq(row_sum(geometry.contract_row), geometry.row_width, "A20: the contract row fills it too")
     H.eq(row_sum(geometry.header_line), geometry.row_width, "A20: the header line fills it")
     H.eq(row_sum(geometry.header_numbers), geometry.row_width, "A20: the two header figures share it")
+    H.eq(row_sum(geometry.header_elevator), geometry.row_width, "A20: the elevator line fills it too")
+    H.eq(row_sum(geometry.feedback_line), geometry.row_width, "A20: and so does the feedback line")
     H.eq(row_sum(geometry.quantity_line), geometry.row_width, "A20: the quantity line fills it")
     H.eq(
       row_sum(geometry.header_character),
@@ -1831,11 +1840,305 @@ M["b1-gui-pure"] = {
   end,
 }
 
+-- ---------------------------------------------------------------------------------------------------
+-- B2-pause — the counter answers nothing while its car is away (ADR 0056 §2)
+-- ---------------------------------------------------------------------------------------------------
+
+M["b2-pause"] = {
+  id = "B2-pause",
+  name = "with the car in flight every action is refused, and all of them work again once it is down",
+  run = function()
+    local force = game.forces["player"]
+    local entity, company_id, state = new_hub(force, { x = 0, y = 0 })
+    local company = company_of(state, company_id)
+    local offers = offers_of(company)
+    if not H.at_least(#offers, 3, "B2-pause: three offers are waiting") then
+      return
+    end
+    local first, second, third = offers[1], offers[2], offers[3]
+    local shop_item = gui_format.price_order()[1]
+
+    -- Two contracts accepted and one left open BEFORE the car leaves: the open one is what the pause has
+    -- to refuse during the flight, and nothing can be accepted mid-flight any more (that is the rule).
+    inventory_of(entity).insert({ name = first.item, count = first.quantity })
+    H.ok(act(1, "accept", { company_id = company_id, contract_id = first.id }).ok, "B2-pause: accept the first while down")
+    H.ok(act(1, "accept", { company_id = company_id, contract_id = second.id }).ok, "B2-pause: accept the second while down")
+    -- Stock and credits for the two trades the pause will refuse: the refusal must be the pause, not a
+    -- shelf that happens to be empty.
+    inventory_of(entity).insert({ name = shop_item, count = 20 })
+    local sent = act(1, "dispatch", { company_id = company_id, contract_id = first.id })
+    H.ok(sent.ok, "B2-pause: the car leaves with the first contract")
+
+    -- Every action of the counter, against the state of the car: accept, buy, sell and dispatch. Each
+    -- one answers with the elevator's name for its state, and none of them moves a credit or an item.
+    local function frozen_everywhere(label)
+      local now = snap(1)
+      local hub = hub_of(now, entity.unit_number)
+      local elevator_state = hub.elevator_state
+      local expected = "elevator_" .. elevator_state
+      local available, reserved = now.available, now.reserved
+      local stock = inventory_of(entity).get_item_count(shop_item)
+      local third_state = contract_of(now, company_id, third.id).state
+
+      local answer = act(1, "accept", { company_id = company_id, contract_id = third.id })
+      H.ok(not answer.ok, "B2-pause [" .. label .. "]: accept is refused while the car is " .. elevator_state)
+      H.eq(answer.reason, expected, "B2-pause [" .. label .. "]: the refusal of the acceptance names the state")
+
+      answer = act(1, "buy", { company_id = company_id, item = shop_item, count = 1 })
+      H.ok(not answer.ok, "B2-pause [" .. label .. "]: buy is refused while the car is " .. elevator_state)
+      H.eq(answer.reason, expected, "B2-pause [" .. label .. "]: the refusal of the purchase names the state")
+
+      answer = act(1, "sell", { company_id = company_id, item = shop_item, count = 1 })
+      H.ok(not answer.ok, "B2-pause [" .. label .. "]: sell is refused while the car is " .. elevator_state)
+      H.eq(answer.reason, expected, "B2-pause [" .. label .. "]: the refusal of the sale names the state")
+
+      answer = act(1, "dispatch", { company_id = company_id, contract_id = second.id })
+      H.ok(not answer.ok, "B2-pause [" .. label .. "]: a second dispatch is refused while the car is " .. elevator_state)
+      H.eq(answer.reason, expected, "B2-pause [" .. label .. "]: the refusal of the dispatch names the state")
+
+      local after = snap(1)
+      H.eq(after.available, available, "B2-pause [" .. label .. "]: no credit moved")
+      H.eq(after.reserved, reserved, "B2-pause [" .. label .. "]: no reserve moved")
+      H.eq(
+        inventory_of(entity).get_item_count(shop_item),
+        stock,
+        "B2-pause [" .. label .. "]: the shelf did not move"
+      )
+      H.eq(
+        contract_of(after, company_id, third.id).state,
+        third_state,
+        "B2-pause [" .. label .. "]: the open offer is still an offer"
+      )
+    end
+
+    -- The three states of a trip, each visited once: the pause is not the `rising` case in disguise.
+    local function wait_for(state_name, on_state, label)
+      H.poll(function()
+        local now = snap(1)
+        if hub_of(now, entity.unit_number).elevator_state == state_name then
+          return now
+        end
+        return false
+      end, 40000, 30, on_state, nil, label)
+    end
+
+    wait_for("rising", function()
+      frozen_everywhere("rising")
+      wait_for("away", function()
+        frozen_everywhere("away")
+        wait_for("descending", function()
+          frozen_everywhere("descending")
+          -- ... and once the car is down the same four answers turn green: the pause was a pause, not a
+          -- new rule about who may trade.
+          wait_for("down", function()
+            local accepted = act(1, "accept", { company_id = company_id, contract_id = third.id })
+            H.ok(accepted.ok, "B2-pause [down]: accept answers again (" .. tostring(accepted.reason) .. ")")
+            local bought = act(1, "buy", { company_id = company_id, item = shop_item, count = 1 })
+            H.ok(bought.ok, "B2-pause [down]: buy answers again (" .. tostring(bought.reason) .. ")")
+            local sold = act(1, "sell", { company_id = company_id, item = shop_item, count = 1 })
+            H.ok(sold.ok, "B2-pause [down]: sell answers again (" .. tostring(sold.reason) .. ")")
+            H.ok(conservation_holds(1), "B2-pause: the credits are conserved through the whole flight")
+            H.note(
+              "B2-pause: with the car rising, away and descending, accept, buy, sell and a second dispatch "
+                .. "are all refused with `elevator_<state>`, and not one credit, reserve or item moves. The "
+                .. "same four actions succeed once the car is down. The window's verdict is this same gate "
+                .. "(contracts.can_accept / counter.buy / counter.sell), so a grey button and a refused "
+                .. "action cannot disagree."
+            )
+          end, "the car to be down again")
+        end, "the car to descend")
+      end, "the car to be away")
+    end, "the car to rise")
+  end,
+}
+
+-- ---------------------------------------------------------------------------------------------------
+-- B3-feedback — one line under the tabs, carrying what was bought and what it cost (ADR 0056 §3)
+-- ---------------------------------------------------------------------------------------------------
+
+M["b3-feedback"] = {
+  id = "B3-feedback",
+  name = "a purchase composes one feedback line with the quantity actually moved and the amount paid",
+  run = function()
+    local force = game.forces["player"]
+    local entity, company_id = new_hub(force, { x = 0, y = 0 })
+    local item = gui_format.price_order()[1]
+
+    local bought = act(1, "buy", { company_id = company_id, item = item, count = 3 })
+    H.ok(bought.ok, "B3-feedback: three units are bought (" .. tostring(bought.reason) .. ")")
+    H.eq(bought.count, 3, "B3-feedback: three units really moved")
+
+    local line = gui_format.feedback_trade("buy", bought.count, bought.total)
+    H.eq(line[1], "comptoir.bought", "B3-feedback: the line says what happened")
+    H.eq(line[2], "3", "B3-feedback: it carries the quantity")
+    H.eq(type(line[3]), "table", "B3-feedback: the amount is a localised string, not a bare number")
+    H.eq(line[3][1], "comptoir.money", "B3-feedback: the amount goes through the money key")
+    H.eq(line[3][2], gui_format.grouped(bought.total), "B3-feedback: it carries the amount paid")
+
+    -- The count on the line is the count that MOVED, never the count that was asked for: the shop clamps
+    -- to the balance and to the room left, and a line that announced the request would be a lie.
+    local asked = 1000000
+    local clamped = act(1, "buy", { company_id = company_id, item = item, count = asked })
+    H.ok(clamped.ok, "B3-feedback: the clamped purchase still goes through (" .. tostring(clamped.reason) .. ")")
+    H.ok(clamped.count < asked, "B3-feedback: the shop clamped the quantity")
+    local clamped_line = gui_format.feedback_trade("buy", clamped.count, clamped.total)
+    H.eq(clamped_line[2], gui_format.grouped(clamped.count), "B3-feedback: the line shows the clamped count")
+
+    local sold = act(1, "sell", { company_id = company_id, item = item, count = 1 })
+    H.ok(sold.ok, "B3-feedback: one unit is sold back (" .. tostring(sold.reason) .. ")")
+    local sell_line = gui_format.feedback_trade("sell", sold.count, sold.total)
+    H.eq(sell_line[1], "comptoir.sold", "B3-feedback: a sale answers with the other half of the same line")
+    H.eq(sell_line[2], "1", "B3-feedback: with the quantity sold")
+    H.eq(sell_line[3][2], gui_format.grouped(sold.total), "B3-feedback: and what it fetched")
+
+    -- A refusal wears the same row, with the reason's own caption — the same words the button would say.
+    local refusal = gui_format.feedback_refusal({ "comptoir.reason-no-stock" })
+    H.eq(refusal[1], "comptoir.refused", "B3-feedback: a refusal replaces the line instead of adding one")
+    H.eq(refusal[2][1], "comptoir.reason-no-stock", "B3-feedback: with the reason's caption in the same row")
+
+    -- The engine is asked to render the three keys (A21's runtime half): a key missing from either
+    -- locale lands in the probe file and turns the run red in tools/run_tests.py.
+    H.probe_locale("feedback-buy", line)
+    H.probe_locale("feedback-sell", sell_line)
+    H.probe_locale("feedback-refusal", refusal)
+
+    H.note(
+      "B3-feedback: the line is composed by scripts/gui/format.lua (feedback_trade, feedback_refusal) from "
+        .. "the answer the shop returns — the quantity that really moved and the amount really paid — and "
+        .. "the engine resolves all three keys in both locales. What a headless run cannot show is the row "
+        .. "itself being redrawn in a frame (ADR 0050): the composition and the rendering are proven, the "
+        .. "placement stays a by-eye criterion."
+    )
+  end,
+}
+
+-- ---------------------------------------------------------------------------------------------------
+-- B4-clock — one bounded clock, and nothing left registered (ADR 0056 §2)
+-- ---------------------------------------------------------------------------------------------------
+
+M["b4-clock"] = {
+  id = "B4-clock",
+  name = "the one clock starts with the first window, stops with the last, and leaves nothing registered",
+  run = function()
+    -- No player is needed and none can be made here: `game.create_player` does not exist in 2.x
+    -- (measured 2026-10-25), and a window tracked for a player who is not in the session is exactly the
+    -- "cannot be drawn any more" case the handler has to drop.
+    local scratch = {}
+    -- The module tracks a window per player and drops the ones it cannot draw. This bench has no client,
+    -- so every window it can be handed is undrawable: that is exactly the drop path, and it is the half
+    -- of the rule a headless run CAN prove.
+    local scratch = {}
+
+    H.eq(gui_window.CLOCK_INTERVAL, 30, "B4-clock: the interval is the 30 ticks ADR 0056 asks for")
+    H.eq(gui_window.clock_running(), false, "B4-clock: nothing is registered before a window opens")
+
+    gui_window.track(scratch, 1, { unit_number = 0, force_index = 1 })
+    H.eq(gui_window.clock_running(), true, "B4-clock: the first window registers the clock")
+    gui_window.track(scratch, 2, { unit_number = 0, force_index = 1 })
+    H.eq(gui_window.clock_running(), true, "B4-clock: a second window does not register a second clock")
+    gui_window.untrack(2)
+    H.eq(gui_window.clock_running(), true, "B4-clock: with one window left the clock stays")
+    gui_window.untrack(1)
+    H.eq(gui_window.clock_running(), false, "B4-clock: the last window to close stops it")
+
+    local at_close = gui_window.clock_runs()
+    H.after(gui_window.CLOCK_INTERVAL * 4, function()
+      H.eq(gui_window.clock_runs(), at_close, "B4-clock: after the last window closed, nothing runs at all")
+
+      -- The drop path: a window that cannot be drawn any more is removed BY THE HANDLER, and that removal
+      -- is what stops the clock. Tracking again from here is the only way to prove both directions.
+      gui_window.track(scratch, 1, { unit_number = 0, force_index = 1 })
+      H.eq(gui_window.clock_running(), true, "B4-clock: tracking a window again restarts the clock")
+      local before = gui_window.clock_runs()
+      H.after(gui_window.CLOCK_INTERVAL * 4, function()
+        H.ok(
+          gui_window.clock_runs() > before,
+          "B4-clock: the handler ran while a window was tracked (it is not a registration in name only)"
+        )
+        H.eq(gui_window.clock_running(), false, "B4-clock: it dropped the window it could not draw and stopped")
+        local frozen = gui_window.clock_runs()
+        H.after(gui_window.CLOCK_INTERVAL * 4, function()
+          H.eq(gui_window.clock_runs(), frozen, "B4-clock: nothing is left registered after the last window")
+          H.eq(gui_window.clock_running(), false, "B4-clock: and the module says so")
+          H.note(
+            "B4-clock: `on_nth_tick(30)` is registered by the first window and unregistered by the last "
+              .. "one — including the case where the handler itself drops a window it can no longer draw "
+              .. "(counter destroyed, player gone, no client). The run counter of the handler is the "
+              .. "witness: it grows while a window is tracked and freezes afterwards. The mod has no other "
+              .. "tick: `advance`, the deadlines and the refills stay lazy."
+          )
+        end)
+      end)
+    end)
+  end,
+}
+
+-- ---------------------------------------------------------------------------------------------------
+-- B5-sprite — the counter is 9 x 9 and drawn from its own sprite (ADR 0056 §1)
+-- ---------------------------------------------------------------------------------------------------
+
+M["b5-sprite"] = {
+  id = "B5-sprite",
+  name = "the counter is a 9 x 9 building drawn from a 288 px sprite, and the item still builds one",
+  run = function()
+    local prototype = prototypes.entity[COUNTER]
+    H.ok(prototype ~= nil, "B5-sprite: the entity exists")
+    -- MEASURED 2026-10-25: `LuaEntityPrototype` has no `picture` field ("doesn't contain key picture"),
+    -- so the artwork itself cannot be read back from a running game. What the run does prove is that the
+    -- data stage accepted it — a wrong path, a missing file or a size that does not match the declaration
+    -- fails the load before any scenario runs — and that the boxes below describe a 9 x 9 building.
+    -- The filename, the 288 px and the scale are checked by `tools/check_artwork.py` (`make check`).
+    for _, box in ipairs({ "collision_box", "selection_box" }) do
+      local bounding = prototype[box]
+      H.eq(bounding.left_top.x, -4.5, "B5-sprite: " .. box .. " left")
+      H.eq(bounding.left_top.y, -4.5, "B5-sprite: " .. box .. " top")
+      H.eq(bounding.right_bottom.x, 4.5, "B5-sprite: " .. box .. " right")
+      H.eq(bounding.right_bottom.y, 4.5, "B5-sprite: " .. box .. " bottom")
+      H.eq(bounding.right_bottom.x - bounding.left_top.x, 9, "B5-sprite: " .. box .. " spans nine tiles")
+      H.eq(bounding.right_bottom.y - bounding.left_top.y, 9, "B5-sprite: " .. box .. " is square")
+    end
+
+    -- Nor does `LuaItemPrototype` expose `icon` / `icon_size` (measured 2026-10-25): the item's artwork is
+    -- part of what `tools/check_artwork.py` asserts at `make check`, next to the entity's.
+    local item = prototypes.item[COUNTER]
+    H.eq(item.place_result.name, COUNTER, "B5-sprite: the item still places the counter")
+
+    local recipe = prototypes.recipe[COUNTER]
+    H.ok(recipe ~= nil, "B5-sprite: the recipe exists")
+    H.eq(recipe.products[1].name, COUNTER, "B5-sprite: and produces the item")
+
+    -- A 9 x 9 building needs room between two sites: the balance file carries the footprint, and the
+    -- distance between two counters is at least that (it is 150 — the spaceport rule of ADR 0014).
+    H.at_least(
+      balance.counter.min_distance,
+      balance.counter.footprint_tiles,
+      "B5-sprite: two counters are at least their own footprint apart"
+    )
+
+    -- Placeable, for real: the recipe is enabled on a force and the item puts a counter on the ground.
+    local force = game.forces["player"]
+    unlock_counter(force)
+    local entity = place(force, { x = 0, y = 0 })
+    H.eq(entity.name, COUNTER, "B5-sprite: the counter is placed")
+    H.eq(entity.valid, true, "B5-sprite: and it is a valid entity")
+
+    H.note(
+      "B5-sprite: the boxes describe a 9 x 9 building, the item keeps its own 64 px icon, its recipe and "
+        .. "its placement, and `min_distance` is 150 — well above the nine-tile footprint the balance file "
+        .. "declares. The artwork's own numbers (filename, 288 px, scale 1, shift 0,0) cannot be read back "
+        .. "from a running game: `LuaEntityPrototype` has no `picture` field (measured 2026-10-25). They are "
+        .. "asserted by `tools/check_artwork.py` at `make check`, and a wrong path or a size that disagrees "
+        .. "with the declaration fails the data stage before this scenario can run."
+    )
+  end,
+}
+
 -- The queue, in the order `docs/09-tests.md` lists the criteria.
 M.ORDER = {
   "a1", "a2", "a3", "a7", "a9", "a10", "a13", "a14", "a15", "a18", "a19", "a26", "a28", "a29", "a30",
   "a31",
   "b1-gui-pure",
+  "b2-pause", "b3-feedback", "b4-clock", "b5-sprite",
   "a9-save", "a9-resume",
 }
 

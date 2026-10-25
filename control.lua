@@ -15,6 +15,9 @@
 --                           takes the item's chain (the two formula doors follow the generator)
 --              2026-10-25 — lot b: the four GUI events wired to scripts/gui/window.lua (opened, closed,
 --                           click, text changed); no tick handler was added for the window either
+--              2026-10-25 — ADR 0056 §2: `accept` and the two trades are handed the company's counter,
+--                           so every action of the door refuses while the car is away. This file is
+--                           still wiring only: the pause lives in the modules, the clock in the window.
 -- Usages:      executed by the game once per session, before any other control-stage file
 -- Notes:       `require` is only legal while control.lua files are being parsed — never inside a
 --              handler (measured on 2.1.23: "Require can't be used outside of control.lua parsing").
@@ -24,8 +27,10 @@
 --              only way a harness can simulate a placement (measured 2026-10-25 — `on_built_entity`
 --              itself cannot be raised by script, and `script_raised_built` is dispatched when raised
 --              from an event handler, but not from `on_init`).
---              NO TICK HANDLER ANYWHERE: the trips, the deadlines and the refills are settled by the
---              read that needs them (`scripts/contracts.lua`). The only events are lifecycle ones.
+--              NO TICK HANDLER IN THIS FILE: the trips, the deadlines and the refills are settled by
+--              the read that needs them (`scripts/contracts.lua`). The one clock in the mod is the
+--              counter window's (scripts/gui/window.lua, ADR 0056 §2) — it starts when the first window
+--              opens and stops when the last one closes — and it is not wired here either.
 --              `act` is a door on the rules, not a second implementation of them: it validates the
 --              shape of the arguments, settles what is due, calls one module function and copies the
 --              answer out. The verdicts (`ok`, `reason`) are the modules'.
@@ -214,7 +219,7 @@ remote.add_interface("comptoir-contracts", {
       if company == nil then
         return { ok = false, reason = "unknown_company" }
       end
-      local ok, reason, contract = contracts.accept(state, force, company, params.contract_id, tick)
+      local ok, reason, contract = contracts.accept(state, storage, force_index, force, company, params.contract_id, tick)
       return { ok = ok, reason = reason, contract = contract_view(contract) }
     elseif action == "dispatch" then
       local company = state.companies[params.company_id]
@@ -229,9 +234,12 @@ remote.add_interface("comptoir-contracts", {
         return { ok = false, reason = "unknown_company" }
       end
       local hub = contracts.hub_for_company(storage, force_index, company.id)
+      if hub == nil then
+        return { ok = false, reason = "no_hub" }
+      end
       local entity = companies.hub_entity(hub)
       local trade = counter[action]
-      local ok, reason, count, total = trade(state, company, entity, params.item, params.count)
+      local ok, reason, count, total = trade(state, company, entity, params.item, params.count, hub)
       return { ok = ok, reason = reason, count = count, total = total }
     elseif action == "generate" then
       local company = state.companies[params.company_id]

@@ -10,6 +10,9 @@
 -- Revisions:   2026-10-25 — initial: buy at price, sell at credits, quote, clamped quantities (a10)
 --              2026-10-25 — b3: `affordable` and `sellable` exposed; `buy` and `sell` take their
 --                           ceiling from them, so the shop tab's gates are the trade's own rules (A22)
+--              2026-10-25 — ADR 0056 §2: `buy` and `sell` take the counter's `hub` and refuse with its
+--                           elevator state while the car is away, before touching the inventory or the
+--                           ledger. The shop now knows the building it stands in, not just the shelf.
 -- Usages:      required by control.lua and by scripts/gui/window.lua; called by the remote interface
 -- Notes:       THE SHOP ALWAYS BUYS (D48, ADR 0028 §"the shop always buys"): with no contract active,
 --              with nothing in reserve, at any time of day. It has no stock of its own and no price
@@ -19,6 +22,10 @@
 --              The one limit is the company's own balance: the shop pays with the company's credits,
 --              and a company without a line (`poor`) cannot pay for what it buys back. That is the
 --              solvency dial of ADR 0015 working as designed, not the shop refusing a sale.
+--              "ALWAYS BUYS" HAS ONE EXCEPTION, AND IT IS NOT A PRICE (ADR 0056 §2): while the car is
+--              up, away or coming down the counter is paused and the shop answers with the elevator
+--              state. It still buys at every balance, at every time of day, with any contract — but not
+--              while the building is in the middle of a delivery.
 --              NEVER A NEGATIVE QUANTITY, NEVER A FREE ITEM (D7): counts are positive integers, the
 --              amount actually traded is returned so the interface shows what happened, and the
 --              credits are computed with integer arithmetic from the generated table.
@@ -29,6 +36,7 @@
 
 local prices = require("__comptoir-contracts__/data/prices")
 local ledger = require("__comptoir-contracts__/scripts/ledger")
+local elevator = require("__comptoir-contracts__/scripts/elevator")
 
 local M = {}
 
@@ -101,10 +109,17 @@ function M.sellable(company, entity, item)
 end
 
 -- The cooperative buys `count` units: the money goes to the company, the goods land in the counter.
+-- The counter is the building with the car in it, so the shop trades only while that car is down
+-- (ADR 0056 §2): `hub` is required, and a paused counter refuses before it looks at the quantity — a
+-- trade that cannot happen must not read the ledger at all.
 -- Returns ok, reason, traded_count, total_credits.
-function M.buy(state, company, entity, item, count)
-  if state == nil or company == nil then
-    error("[comptoir] counter.buy: state and company are required", 2)
+function M.buy(state, company, entity, item, count, hub)
+  if state == nil or company == nil or hub == nil then
+    error("[comptoir] counter.buy: state, company and hub are required", 2)
+  end
+  local paused = elevator.pause_reason(hub)
+  if paused ~= nil then
+    return false, paused, 0, 0
   end
   local entry = entry_of(item)
   local inventory = M.inventory_of(entity)
@@ -137,11 +152,16 @@ function M.buy(state, company, entity, item, count)
 end
 
 -- The company buys `count` units back: the goods leave the counter, the cooperative is credited.
--- The only ceiling on the quantity is the stock and the company's balance.
+-- The only ceiling on the quantity is the stock and the company's balance — and, like `buy`, the car:
+-- no sale while it is away (ADR 0056 §2).
 -- Returns ok, reason, traded_count, total_credits.
-function M.sell(state, company, entity, item, count)
-  if state == nil or company == nil then
-    error("[comptoir] counter.sell: state and company are required", 2)
+function M.sell(state, company, entity, item, count, hub)
+  if state == nil or company == nil or hub == nil then
+    error("[comptoir] counter.sell: state, company and hub are required", 2)
+  end
+  local paused = elevator.pause_reason(hub)
+  if paused ~= nil then
+    return false, paused, 0, 0
   end
   local entry = entry_of(item)
   local inventory = M.inventory_of(entity)

@@ -24,6 +24,11 @@
 --                           for the names and the figures; explicit `horizontal_spacing`; frame width
 --                           = `ROW_WIDTH` + 2 x `PADDING`. The sums are asserted at load and proved
 --                           by scenario B1-gui-pure from `M.GEOMETRY`
+--              2026-10-25 — ADR 0056 §2/§3: a header row for the car (down / rising / away /
+--                           descending + the remaining time), the three actions disabled while it is not
+--                           down with the reason and the countdown on the button, one feedback row under
+--                           the tabs rewritten by every action, and ONE bounded `on_nth_tick(30)` that
+--                           starts with the first window and stops with the last
 -- Usages:      required by control.lua, wired to on_gui_opened / on_gui_closed / on_gui_click /
 --              on_gui_text_changed; the pure part lives in scripts/gui/format.lua
 -- Notes:       THE WINDOW IS NOT TESTABLE HEADLESS (ADR 0050). The measured prerequisite is the
@@ -31,8 +36,12 @@
 --              adding the frame to `player.gui.screen`, replaces the vanilla container frame. That is
 --              the sequence below, and the close it causes itself bounces back as an on_gui_closed in
 --              the same tick — that one is ignored, or the frame would destroy itself on sight.
---              NO on_tick. The rows are rebuilt when the window opens, when the tab changes, when a
---              preset is written and after every action; nothing is refreshed by a clock.
+--              NO on_tick OF ITS OWN, AND ONE ON A CLOCK IT OWNS (ADR 0056 §2). The rows are rebuilt
+--              when the window opens, when the tab changes, when a preset is written and after every
+--              action; the header's countdown is the one thing that has to move on its own, so this
+--              module registers `script.on_nth_tick(30)` when the first window opens and unregisters
+--              it the moment the last one closes — including when that window cannot be drawn any
+--              more (destroyed, player gone). No other tick exists in the mod.
 --              THE TAB AND THE QUANTITY ARE PER PLAYER AND NEVER IN `storage`: two local tables, lost
 --              on reload on purpose (a window is not economy). The frame itself survives a save, so a
 --              click on a window whose binding was lost destroys it and says so instead of guessing
@@ -70,6 +79,7 @@ local companies = require("__comptoir-contracts__/scripts/companies")
 local contracts = require("__comptoir-contracts__/scripts/contracts")
 local counter = require("__comptoir-contracts__/scripts/counter")
 local ledger = require("__comptoir-contracts__/scripts/ledger")
+local elevator = require("__comptoir-contracts__/scripts/elevator")
 local balance = require("__comptoir-contracts__/config/balance")
 
 local M = {}
@@ -89,6 +99,10 @@ local HEADER_TEXT = "comptoir_header_text"
 local HEADER_NUMBERS = "comptoir_header_numbers"
 local HEADER_AVAILABLE = "comptoir_header_available"
 local HEADER_RESERVED = "comptoir_header_reserved"
+local HEADER_ELEVATOR = "comptoir_header_elevator"
+local HEADER_ELEVATOR_STATE = "comptoir_header_elevator_state"
+local HEADER_ELEVATOR_CLOCK = "comptoir_header_elevator_clock"
+local FEEDBACK_TEXT = "comptoir_feedback_text"
 local TABS = "comptoir_tabs"
 local TAB_CONTRACTS = "ct_tab_contracts"
 local TAB_SHOP = "ct_tab_shop"
@@ -115,8 +129,9 @@ local ICON_SHOP = 20
 local ICON_CONTRACT = 32
 local COL_PRICE = 96      -- shop: the buy price, right aligned
 local COL_CREDITS = 96    -- shop: the buy-back price, right aligned
-local COL_BUY = 96        -- shop: the BUY button
-local COL_SELL = 96       -- shop: the SELL button
+local COL_BUY = 120       -- shop: the BUY button (widened by ADR 0056 §2 — it wears a countdown)
+local COL_SELL = 120      -- shop: the SELL button (same: a paused button says why and how long)
+local COL_LIFT_CLOCK = 96 -- header: the elevator's remaining time, right aligned
 local COL_TIME = 208      -- contract: payout, bar and clock
 local COL_ACTION = 140    -- contract: the one contextual button
 local COL_COMPANY = 240   -- header: the company name
@@ -135,6 +150,7 @@ local COL_CHARACTER_TEXT = COL_CHARACTER - ICON_SHOP - SPACING
 local COL_CLOCK = COL_TIME - BAR_WIDTH - SPACING
 local NUM_CELL = (ROW_WIDTH - SPACING) / 2
 local COL_QUANTITY_LABEL = ROW_WIDTH - (FIELD_WIDTH + 4 * PRESET_WIDTH) - 5 * SPACING
+local COL_LIFT_STATE = ROW_WIDTH - COL_LIFT_CLOCK - SPACING
 local FRAME_WIDTH = ROW_WIDTH + 2 * PADDING
 
 -- The cell widths of every row, in drawing order: the guard below sums them, and the bench reads
@@ -150,6 +166,8 @@ M.GEOMETRY = {
   header_line = { COL_COMPANY, COL_CHARACTER },
   header_character = { ICON_SHOP, COL_CHARACTER_TEXT },
   header_numbers = { NUM_CELL, NUM_CELL },
+  header_elevator = { COL_LIFT_STATE, COL_LIFT_CLOCK },
+  feedback_line = { ROW_WIDTH },
   quantity_line = { COL_QUANTITY_LABEL, FIELD_WIDTH, PRESET_WIDTH, PRESET_WIDTH, PRESET_WIDTH, PRESET_WIDTH },
   contract_time = { BAR_WIDTH, COL_CLOCK },
 }
@@ -163,6 +181,8 @@ do
     { "contract_row", M.GEOMETRY.contract_row, ROW_WIDTH },
     { "header_line", M.GEOMETRY.header_line, ROW_WIDTH },
     { "header_numbers", M.GEOMETRY.header_numbers, ROW_WIDTH },
+    { "header_elevator", M.GEOMETRY.header_elevator, ROW_WIDTH },
+    { "feedback_line", M.GEOMETRY.feedback_line, ROW_WIDTH },
     { "quantity_line", M.GEOMETRY.quantity_line, ROW_WIDTH },
     { "header_character", M.GEOMETRY.header_character, COL_CHARACTER },
     { "contract_time", M.GEOMETRY.contract_time, COL_TIME },
@@ -197,6 +217,75 @@ local windows = {}
 -- as an on_gui_closed in the same tick; ignoring it is what keeps the frame on screen (ADR 0050).
 local self_closed_tick = {}
 
+-- The answer to the last action (ADR 0056 §3), per player: what the feedback row reads. Cleared with
+-- the window — a line that outlived its frame would greet the next opening as if it had just happened.
+local feedback = {}
+
+-- The bounded clock (ADR 0056 §2). ONE `script.on_nth_tick(30)` for the whole module: registered when
+-- the first window opens, unregistered the moment the last one closes, and never kept alive by a window
+-- that cannot be drawn. It measures one thing — the header's countdown has to move — and decides
+-- nothing: the trips, the deadlines and the refills stay lazy (design.md §3).
+local CLOCK_INTERVAL = 30
+local clock = { registered = false, storage = nil, runs = 0 }
+
+-- Declared before it is defined: registering needs the handler, and the handler needs `refresh`, which
+-- is defined after the drawing code.
+local clock_tick
+
+local function clock_stop()
+  if clock.registered then
+    script.on_nth_tick(CLOCK_INTERVAL, nil)
+    clock.registered = false
+  end
+end
+
+local function clock_start(storage)
+  clock.storage = storage
+  if not clock.registered then
+    script.on_nth_tick(CLOCK_INTERVAL, clock_tick)
+    clock.registered = true
+  end
+end
+
+-- One window stops being drawn — closed by the player, destroyed with its counter, or lost with the
+-- player. The last one takes the clock with it: the mod is lazy again as soon as nobody is looking at a
+-- countdown.
+local function detach(player_index)
+  windows[player_index] = nil
+  feedback[player_index] = nil
+  if next(windows) == nil then
+    clock_stop()
+  end
+end
+
+-- The bookkeeping the events below use, and that the bench drives directly (scenario B4-clock): one
+-- window per player, and a clock that follows the first and the last of them.
+function M.track(storage, player_index, window)
+  if storage == nil or type(player_index) ~= "number" or window == nil then
+    error("[comptoir] gui.window.track: storage, player index and window are required", 2)
+  end
+  windows[player_index] = window
+  clock_start(storage)
+end
+
+function M.untrack(player_index)
+  detach(player_index)
+end
+
+-- Whether the one clock is registered, and how many times its handler has run. The bench asserts the
+-- pair: closing the last window must unregister, and a handler that is still registered shows up as a
+-- counter that keeps growing.
+function M.clock_running()
+  return clock.registered
+end
+
+function M.clock_runs()
+  return clock.runs
+end
+
+-- The interval itself, so a scenario never hard-codes 30.
+M.CLOCK_INTERVAL = CLOCK_INTERVAL
+
 -- The catalogue's three groups, one literal key each: the character line of the header is a localised
 -- string, and the family prefix lives in the section name (`[comptoir]`), so a key is the bare name
 -- and the Lua side asks for `{"comptoir.<key>"}` (ADR 0053). Same for the reasons below: `_` became
@@ -206,6 +295,38 @@ M.GROUP_KEYS = {
   electronics = { "comptoir.group-electronics" },
   logistics = { "comptoir.group-logistics" },
 }
+
+-- The four states of the car, one literal key each (ADR 0056 §2). Same rule as the reasons below:
+-- written out, never built with `"comptoir.elevator-" .. state`, or `tools/check_locale.py` cannot see
+-- them. The key keeps the state's own name so the header and the refusal reasons say the same word.
+M.ELEVATOR_KEYS = {
+  down = { "comptoir.elevator-down" },
+  rising = { "comptoir.elevator-rising" },
+  away = { "comptoir.elevator-away" },
+  descending = { "comptoir.elevator-descending" },
+}
+
+-- Checked while control.lua is parsed: the module knows exactly four states, and a state without a
+-- caption would draw an empty header cell — the same class of bug as a missing reason (ADR 0053).
+do
+  local states = { elevator.DOWN, elevator.RISING, elevator.AWAY, elevator.DESCENDING }
+  for _, state in ipairs(states) do
+    if M.ELEVATOR_KEYS[state] == nil then
+      error("[comptoir] gui.window: the elevator state \"" .. state .. "\" has no caption key")
+    end
+  end
+  for state in pairs(M.ELEVATOR_KEYS) do
+    local known = false
+    for _, other in ipairs(states) do
+      if state == other then
+        known = true
+      end
+    end
+    if not known then
+      error("[comptoir] gui.window: ELEVATOR_KEYS carries \"" .. state .. "\", which is not a state of the car")
+    end
+  end
+end
 
 -- Every reason a module can hand back, with the caption it prints, one literal key per code.
 -- WRITTEN OUT, NEVER BUILT WITH `"comptoir.reason-" .. reason`: a concatenated key is invisible to
@@ -266,8 +387,21 @@ local function child_named(parent, name)
   return nil
 end
 
+-- The frame this player has, or nil when there is none to draw into. Without a client the screen
+-- element does not exist and asking for it raises instead of returning nil (ADR 0050), so the read is
+-- wrapped: "there is no window to draw" and "the player is gone" are the same answer here, and the
+-- bounded clock below depends on getting that answer instead of an error.
 local function root_of(player)
-  local root = player.gui.screen[ROOT]
+  if player == nil or player.valid ~= true then
+    return nil
+  end
+  local ok, screen = pcall(function()
+    return player.gui.screen
+  end)
+  if not ok or screen == nil then
+    return nil
+  end
+  local root = screen[ROOT]
   if root ~= nil and root.valid then
     return root
   end
@@ -396,9 +530,23 @@ local function build(player)
   cell(numbers.add({ type = "label", name = HEADER_AVAILABLE, caption = "" }), NUM_CELL, "right")
   cell(numbers.add({ type = "label", name = HEADER_RESERVED, caption = "" }), NUM_CELL, "right")
 
+  -- Where the car is, and how long it has left (ADR 0056 §2). A row of its own, above the tabs: the
+  -- state is a fact of the counter, not of a tab, and the countdown is the only text in the frame that
+  -- moves on its own.
+  local lift = full_row(header, { type = "flow", name = HEADER_ELEVATOR, direction = "horizontal" })
+  cell(lift.add({ type = "label", name = HEADER_ELEVATOR_STATE, caption = "" }), COL_LIFT_STATE)
+  cell(lift.add({ type = "label", name = HEADER_ELEVATOR_CLOCK, caption = "" }), COL_LIFT_CLOCK, "right")
+
   local tabbar = full_row(root, { type = "flow", name = TABS, direction = "horizontal" })
   button_cell(tabbar.add({ type = "button", name = TAB_CONTRACTS, caption = { "comptoir.tab-contracts" } }), NUM_CELL)
   button_cell(tabbar.add({ type = "button", name = TAB_SHOP, caption = { "comptoir.tab-shop" } }), NUM_CELL)
+
+  -- The feedback line (ADR 0056 §3): one row under the tabs, one line, rewritten after every action and
+  -- left alone until the next one. Built with the frame and never destroyed, so a refusal and a sale
+  -- land in the same place and the window does not move when either happens.
+  local feedback_row = root.add({ type = "label", name = FEEDBACK_TEXT, caption = "" })
+  feedback_row.style.horizontal_align = "left"
+  cell(feedback_row, ROW_WIDTH)
 
   for _, name in ipairs({ BODY_CONTRACTS, BODY_SHOP }) do
     local body = root.add({ type = "flow", name = name, direction = "vertical" })
@@ -443,11 +591,30 @@ local function quantity_of(player_index)
   return quantities[player_index] or 1
 end
 
--- The two gates of a shop row, computed once and used both when drawing and while typing (A22).
-local function shop_gates(ctx, item, quantity)
-  local buy = quantity >= 1 and quantity <= counter.affordable(ctx.state, item)
+-- The elevator, as the window shows it (ADR 0056 §2): the state, its caption, the clock, and the one
+-- caption the paused buttons wear. Read once per render, so the header and the buttons cannot
+-- disagree, and the `wait` string is built once instead of once per row.
+local function lift_of(ctx, tick)
+  local elevator_state = elevator.state_of(ctx.hub)
+  local remaining = format.clock(elevator.remaining_ticks(ctx.hub, tick))
+  local caption = M.ELEVATOR_KEYS[elevator_state]
+  return {
+    state = elevator_state,
+    moving = elevator_state ~= elevator.DOWN,
+    caption = caption,
+    clock = remaining,
+    wait = { "comptoir.action-wait", caption, remaining },
+  }
+end
+
+-- The three gates of a shop row, computed once and used both when drawing and while typing (A22). The
+-- third is the pause of ADR 0056 §2: a counter whose car is not down trades nothing, so the two
+-- buttons are disabled before any price is read.
+local function shop_gates(ctx, item, quantity, moving)
+  local paused = moving == true
+  local buy = paused ~= true and quantity >= 1 and quantity <= counter.affordable(ctx.state, item)
   local sellable = counter.sellable(ctx.company, ctx.entity, item)
-  local sell = quantity >= 1 and quantity <= sellable
+  local sell = paused ~= true and quantity >= 1 and quantity <= sellable
   return buy, sell
 end
 
@@ -455,7 +622,7 @@ end
 -- Drawing
 -- ---------------------------------------------------------------------------------------------------
 
-local function draw_contract_row(body, contract, ctx, storage, tick)
+local function draw_contract_row(body, contract, ctx, storage, tick, lift)
   local row = full_row(body, { type = "flow", name = "contracts-" .. contract.id .. "-row", direction = "horizontal" }, ROW_HEIGHT)
 
   icon(row, "contracts-" .. contract.id .. "-icon", contract.item, ICON_CONTRACT)
@@ -492,16 +659,22 @@ local function draw_contract_row(body, contract, ctx, storage, tick)
     caption = texts.clock,
   }), COL_CLOCK)
 
-  -- The one contextual button of the row (docs/06 §2). Its verdict is the module's (A22).
+  -- The one contextual button of the row (docs/06 §2). Its verdict is the module's (A22) — except
+  -- while the car is not down: then the pause wins the caption, the button is disabled, and it says
+  -- what it waits for and how long it has to wait (ADR 0056 §2). A disabled button with no reason is
+  -- exactly the complaint this answers.
   local action, allowed, _, stock = contracts.action_of(ctx.state, storage, ctx.force_index, ctx.company, contract)
   local button = row.add({ type = "button", name = "contracts-" .. contract.id .. "-action", caption = "" })
   button_cell(button, COL_ACTION)
-  if action == "accept" then
-    button.caption = { "comptoir.action-accept" }
-    button.enabled = allowed == true
-  elseif contract.state == contracts.IN_FLIGHT then
+  if contract.state == contracts.IN_FLIGHT then
     button.caption = { "comptoir.action-in-flight" }
     button.enabled = false
+  elseif lift.moving then
+    button.caption = lift.wait
+    button.enabled = false
+  elseif action == "accept" then
+    button.caption = { "comptoir.action-accept" }
+    button.enabled = allowed == true
   else
     -- How many the counter holds of what the contract asks for, capped at the quantity: a number above
     -- the order would announce a delivery that cannot happen.
@@ -518,7 +691,7 @@ local function draw_empty_slot(body, slot)
   return row
 end
 
-local function draw_shop_row(body, item, ctx, quantity)
+local function draw_shop_row(body, item, ctx, quantity, lift)
   local quote = counter.quote(item)
   local row = full_row(body, { type = "flow", name = "counter-" .. item .. "-row", direction = "horizontal" }, SHOP_ROW_HEIGHT)
 
@@ -532,15 +705,22 @@ local function draw_shop_row(body, item, ctx, quantity)
 
   cell(row.add({ type = "label", name = "counter-" .. item .. "-buy-back", caption = { "comptoir.buy-back", format.grouped(quote.sell_credits) } }), COL_CREDITS, "right")
 
-  local buy_enabled, sell_enabled = shop_gates(ctx, item, quantity)
+  local buy_enabled, sell_enabled = shop_gates(ctx, item, quantity, lift.moving)
   local buy = button_cell(row.add({ type = "button", name = "counter-" .. item .. "-buy", caption = { "comptoir.buy" } }), COL_BUY)
-  buy.enabled = buy_enabled
   local sell = button_cell(row.add({ type = "button", name = "counter-" .. item .. "-sell", caption = { "comptoir.sell" } }), COL_SELL)
+  -- While the car is away the two buttons say why they are grey and when they will come back, in the
+  -- same words as the header (ADR 0056 §2). Fifteen rows wear the same caption: it is one state, not
+  -- fifteen.
+  if lift.moving then
+    buy.caption = lift.wait
+    sell.caption = lift.wait
+  end
+  buy.enabled = buy_enabled
   sell.enabled = sell_enabled
   return row
 end
 
-local function draw_shop(body, ctx, player)
+local function draw_shop(body, ctx, player, lift)
   local quantity = quantity_of(player.index)
 
   local line = full_row(body, { type = "flow", name = QUANTITY_LINE, direction = "horizontal" })
@@ -558,7 +738,7 @@ local function draw_shop(body, ctx, player)
   end
 
   for _, item in ipairs(format.price_order()) do
-    draw_shop_row(body, item, ctx, quantity)
+    draw_shop_row(body, item, ctx, quantity, lift)
   end
 end
 
@@ -566,7 +746,7 @@ local function render(storage, player, window)
   local ctx = context(storage, window)
   if ctx == nil then
     destroy(player)
-    windows[player.index] = nil
+    detach(player.index)
     return
   end
 
@@ -596,6 +776,17 @@ local function render(storage, player, window)
   child_named(numbers, HEADER_AVAILABLE).caption = { "comptoir.available", format.grouped(ledger.available(ctx.state)) }
   child_named(numbers, HEADER_RESERVED).caption = { "comptoir.reserved", format.grouped(ctx.state.reserved) }
 
+  -- The car (ADR 0056 §2): where it is, and how long before it is down again. The clock reads 0:00 when
+  -- the car is down — a countdown to nothing is not a state, and the header already says "down".
+  local lift = lift_of(ctx, tick)
+  local lift_row = child_named(header, HEADER_ELEVATOR)
+  child_named(lift_row, HEADER_ELEVATOR_STATE).caption = { "comptoir.elevator", lift.caption }
+  child_named(lift_row, HEADER_ELEVATOR_CLOCK).caption = lift.clock
+
+  -- The answer to the last action (ADR 0056 §3). It is a fact of the window, not of a tab: switching
+  -- tabs leaves it alone, and only the next action rewrites it.
+  child_named(root, FEEDBACK_TEXT).caption = feedback[player.index] or ""
+
   -- Tabs: the active one is disabled, which is the whole of "the active tab reads as active" without
   -- a style (mission: no styling).
   local tab = tabs[player.index] or TAB_CONTRACTS
@@ -619,14 +810,14 @@ local function render(storage, player, window)
     -- which is exactly what the display cap used to do.
     local live = contracts.live(ctx.company)
     for _, contract in ipairs(live) do
-      draw_contract_row(contract_body, contract, ctx, storage, tick)
+      draw_contract_row(contract_body, contract, ctx, storage, tick, lift)
     end
     for slot = #live + 1, CONTRACT_SLOTS do
       draw_empty_slot(contract_body, slot)
     end
   else
     clear(shop_body)
-    draw_shop(shop_body, ctx, player)
+    draw_shop(shop_body, ctx, player, lift)
   end
 end
 
@@ -641,6 +832,40 @@ local function refresh(storage, player)
     contracts.settle(storage, force, game.tick)
   end
   render(storage, player, window)
+end
+
+-- The handler of the one clock (ADR 0056 §2). It redraws the windows that can still be drawn and drops
+-- the ones that cannot: a counter deconstructed with its window open, a player who left, a client that
+-- is no longer there. Dropping them is what keeps the registration bounded — the last window to go takes
+-- the clock with it, so `on_nth_tick` is unregistered by the same code that keeps it honest. The
+-- `runs` counter is the bench's proof that this handler is really the thing that stopped.
+clock_tick = function()
+  clock.runs = clock.runs + 1
+  if next(windows) == nil then
+    -- A save taken with a window open reloads with the engine still holding this handler while the
+    -- module's per-player tables are gone (they are deliberately not in `storage`). Nothing to draw is
+    -- nothing to measure: this is the one path that could leave the registration behind, so it is closed
+    -- here instead of hoped away — the next window to open registers it again.
+    clock_stop()
+    return
+  end
+  local doomed, alive = {}, {}
+  for player_index, window in pairs(windows) do
+    local player = game.get_player(player_index)
+    if root_of(player) == nil or context(clock.storage, window) == nil then
+      doomed[#doomed + 1] = player_index
+    else
+      alive[#alive + 1] = player
+    end
+  end
+  for _, player_index in ipairs(doomed) do
+    -- A window whose counter is gone must not stay on screen with the last numbers it drew.
+    destroy(game.get_player(player_index))
+    detach(player_index)
+  end
+  for _, player in ipairs(alive) do
+    refresh(clock.storage, player)
+  end
 end
 
 -- ---------------------------------------------------------------------------------------------------
@@ -677,7 +902,9 @@ function M.on_opened(storage, event)
   -- away, and the frame below is the only thing left on screen.
   player.opened = nil
 
-  windows[event.player_index] = { unit_number = entity.unit_number, force_index = hub.force_index }
+  -- One window, tracked: the frame is built by the refresh below, and this is where the mod learns that
+  -- somebody is looking at a countdown (ADR 0056 §2 — the clock starts with the first window).
+  M.track(storage, event.player_index, { unit_number = entity.unit_number, force_index = hub.force_index })
   refresh(storage, player)
 end
 
@@ -687,32 +914,50 @@ function M.on_closed(storage, event)
     return
   end
   local player = game.get_player(event.player_index)
-  if player == nil then
-    windows[event.player_index] = nil
-    return
-  end
   destroy(player)
-  windows[event.player_index] = nil
+  -- The last window to close stops the clock (ADR 0056 §2). `destroy` above answers for a player who is
+  -- still here; a player who is gone has no frame left to destroy.
+  M.untrack(event.player_index)
 end
 
 -- A refused action says why, in the player's language, from one key per reason. A code this table does
--- not know is printed as the raw code: a visible gap (design.md §5), never a key the engine cannot
+-- not know is shown as the raw code: a visible gap (design.md §5), never a key the engine cannot
 -- resolve into a window full of "Unknown key" (ADR 0053).
 local function reason_caption(reason)
   return M.REASON_KEYS[reason] or reason
+end
+
+-- The answer to the last action (ADR 0056 §3): one line, under the tabs, rewritten by every action —
+-- acceptance, dispatch, purchase, sale — and by every refusal, which uses the same row with its reason.
+-- It stays until the next action replaces it, and it is a line of the window rather than a print in the
+-- console: the player is looking at the window, so the window is what answers. The rows are rebuilt on
+-- every action anyway, and `render` paints this line from the table below, so it survives a tab change
+-- too.
+local function say(player, caption)
+  feedback[player.index] = caption
 end
 
 local function refuse(player, reason)
   if reason == nil then
     return
   end
-  player.print({ "comptoir.refused", reason_caption(reason) })
+  say(player, { "comptoir.refused", reason_caption(reason) })
 end
 
 local function accept(storage, player, ctx, contract_id)
   local tick = game.tick
-  local ok, reason = contracts.accept(ctx.state, player.force, ctx.company, contract_id, tick)
-  if not ok then
+  local ok, reason, contract = contracts.accept(
+    ctx.state,
+    storage,
+    ctx.force_index,
+    player.force,
+    ctx.company,
+    contract_id,
+    tick
+  )
+  if ok then
+    say(player, format.feedback_contract("accept", contract.quantity, contract.item))
+  else
     refuse(player, reason)
   end
   refresh(storage, player)
@@ -720,8 +965,10 @@ end
 
 local function dispatch(storage, player, ctx, contract_id)
   local tick = game.tick
-  local ok, reason = contracts.dispatch(ctx.state, storage, ctx.force_index, ctx.company, contract_id, tick)
-  if not ok then
+  local ok, reason, contract = contracts.dispatch(ctx.state, storage, ctx.force_index, ctx.company, contract_id, tick)
+  if ok then
+    say(player, format.feedback_contract("dispatch", contract.quantity, contract.item))
+  else
     refuse(player, reason)
   end
   refresh(storage, player)
@@ -730,13 +977,9 @@ end
 local function trade(storage, player, ctx, item, action_name)
   local quantity = quantity_of(player.index)
   local trade_fn = counter[action_name]
-  local ok, reason, count, total = trade_fn(ctx.state, ctx.company, ctx.entity, item, quantity)
+  local ok, reason, count, total = trade_fn(ctx.state, ctx.company, ctx.entity, item, quantity, ctx.hub)
   if ok then
-    player.print({
-      action_name == "buy" and { "comptoir.bought" } or { "comptoir.sold" },
-      format.grouped(count),
-      { "comptoir.money", format.grouped(total) },
-    })
+    say(player, format.feedback_trade(action_name, count, total))
   else
     refuse(player, reason)
   end
@@ -761,16 +1004,29 @@ local function regate(root, ctx, player, quantity)
   if body == nil or body.valid == false then
     return
   end
+  -- The pause is re-read here too: typing in the field must not re-enable a button the car has taken
+  -- away, and the caption has to follow the countdown (ADR 0056 §2).
+  local lift = lift_of(ctx, game.tick)
   for _, item in ipairs(format.price_order()) do
     local buy = child_named(body, "counter-" .. item .. "-buy")
     local sell = child_named(body, "counter-" .. item .. "-sell")
     if buy ~= nil or sell ~= nil then
-      local buy_enabled, sell_enabled = shop_gates(ctx, item, quantity)
+      local buy_enabled, sell_enabled = shop_gates(ctx, item, quantity, lift.moving)
       if buy ~= nil then
         buy.enabled = buy_enabled
+        if lift.moving then
+          buy.caption = lift.wait
+        else
+          buy.caption = { "comptoir.buy" }
+        end
       end
       if sell ~= nil then
         sell.enabled = sell_enabled
+        if lift.moving then
+          sell.caption = lift.wait
+        else
+          sell.caption = { "comptoir.sell" }
+        end
       end
     end
   end
@@ -792,7 +1048,7 @@ function M.on_text_changed(storage, event)
   local ctx = context(storage, windows[event.player_index])
   if ctx == nil then
     destroy(player)
-    windows[event.player_index] = nil
+    M.untrack(event.player_index)
     return
   end
 
@@ -823,9 +1079,10 @@ function M.on_click(storage, event)
   local ctx = context(storage, windows[event.player_index])
   if ctx == nil then
     -- The frame outlived its binding (a save reloaded, or the counter was deconstructed): close it and
-    -- say so rather than act on a counter we can no longer identify.
+    -- say so rather than act on a counter we can no longer identify. There is no window left to write a
+    -- feedback line into, so this one message stays a print.
     destroy(player)
-    windows[event.player_index] = nil
+    M.untrack(event.player_index)
     player.print({ "comptoir.stale-window" })
     return
   end

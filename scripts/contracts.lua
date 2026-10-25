@@ -21,6 +21,10 @@
 --                           `count_offers`, `refill` fills `offer_slots - live` and never goes
 --                           negative, and `can_accept` refuses with `no_free_slot` when a company
 --                           already holds more than the cap (a stale read, or an edited save)
+--              2026-10-25 — ADR 0056 §2: the counter pauses while its car is away. `can_accept` takes
+--                           the company's hub and refuses with the elevator state; `accept` takes
+--                           `storage` and `force_index` to find that hub, so the button, the remote
+--                           API and the action itself read one gate
 -- Usages:      required by control.lua; called by the remote interface, by the settle pass and by
 --              scripts/gui/window.lua (b2)
 -- Notes:       THE POOL IS A GATE, NOT A NUANCE (A18, ADR 0034 §1): an item enters the pool only if
@@ -347,12 +351,15 @@ local function dispatch_readiness(state, storage, force_index, company, contract
 end
 
 -- May this offer be accepted right now (A22)? The same conditions the hold in `accept` needs, said
--- without moving a credit: the contract is still an offer, the company has a free slot, and the
--- cooperative can cover the reserve.
+-- without moving a credit: the contract is still an offer, the counter is not paused, the company has
+-- a free slot, and the cooperative can cover the reserve.
 -- Acceptance turns an offer into an accepted contract, so it keeps `live_count` constant: the
 -- `no_free_slot` guard therefore only fires on a stale read or on a save edited between two reads
 -- (ADR 0051). A company at exactly the cap may still accept one of the three contracts it holds.
-function M.can_accept(state, company, contract)
+-- `hub` is the company's counter, or nil when it has none (a destroyed counter pauses nothing: there
+-- is no car to wait for). The pause of ADR 0056 §2 is part of this gate and not a second check in the
+-- window, so the button and the remote API cannot disagree about it.
+function M.can_accept(state, company, contract, hub)
   if contract == nil then
     return false, "unknown_contract"
   end
@@ -365,6 +372,15 @@ function M.can_accept(state, company, contract)
   if ledger.available(state) < contract.reserve then
     return false, "escrow_unavailable"
   end
+  -- The pause comes LAST on purpose: a full slot and a short cooperative stay true after the car lands,
+  -- so they are the more useful answer; the window paints the countdown over all of them while it lasts
+  -- (ADR 0056 §2), and the remote door still refuses.
+  if hub ~= nil then
+    local paused = elevator.pause_reason(hub)
+    if paused ~= nil then
+      return false, paused
+    end
+  end
   return true, nil
 end
 
@@ -376,7 +392,8 @@ function M.action_of(state, storage, force_index, company, contract)
     return nil, false, "unknown_contract", 0
   end
   if contract.state == M.OFFERED then
-    local ok, reason = M.can_accept(state, company, contract)
+    local hub = M.hub_for_company(storage, force_index, company.id)
+    local ok, reason = M.can_accept(state, company, contract, hub)
     return "accept", ok, reason, 0
   end
   if contract.state == M.ACCEPTED then
@@ -433,13 +450,17 @@ end
 
 -- Accept an offer: the escrow is held against the cooperative's available credits (D47, ADR 0027) and
 -- the deadline starts now. Nothing else moves — the player has promised, not paid.
+-- `storage` and `force_index` are here to find the company's counter: acceptance is paused while the
+-- car is away (ADR 0056 §2), and the counter is what holds the car. They are the same two arguments
+-- `dispatch` already takes, plus the `force` the refill needs.
 -- Returns ok, reason, contract.
-function M.accept(state, force, company, contract_id, tick)
-  if state == nil or force == nil or company == nil then
-    error("[comptoir] contracts.accept: state, force and company are required", 2)
+function M.accept(state, storage, force_index, force, company, contract_id, tick)
+  if state == nil or storage == nil or force == nil or company == nil then
+    error("[comptoir] contracts.accept: state, storage, force and company are required", 2)
   end
   local contract = company.contracts[contract_id]
-  local allowed, reason = M.can_accept(state, company, contract)
+  local hub = M.hub_for_company(storage, force_index, company.id)
+  local allowed, reason = M.can_accept(state, company, contract, hub)
   if not allowed then
     return false, reason, contract
   end

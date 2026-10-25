@@ -8,6 +8,8 @@
 -- Author:      Philippe Ryf
 -- Created:     2026-10-25
 -- Revisions:   2026-10-25 — initial: grouping, clock, bar bands, clamp, presets, price order (b1-b3)
+--              2026-10-25 — ADR 0056 §3: `feedback_trade`, `feedback_contract` and `feedback_refusal`
+--                           compose the one feedback line the window shows under its tabs
 -- Usages:      required by scripts/gui/window.lua and by the bench (scenario b1-gui-pure)
 -- Notes:       NO NUMBER IS RECOMPUTED HERE. A quantity, a payout or a reserve arrives from
 --              `scripts/contracts.lua` and is only formatted: the window never multiplies, never
@@ -256,6 +258,45 @@ function M.row_texts(contract, remaining_ticks, total_ticks)
     fraction = fraction,
     band = band,
   }
+end
+
+-- The feedback line (ADR 0056 §3): one row under the tabs, rewritten by every action — what was bought
+-- or sold, how many, the amount — and, for a refusal, the same row with the reason. Composed here
+-- rather than in the window so a headless scenario can assert the three parts that reach the player
+-- (ADR 0050: the frame is not testable, what it says is).
+-- `action_name` is the click's verb: "buy" or "sell" for a trade, "accept" or "dispatch" for a contract.
+-- The count is the number ACTUALLY moved (counter.buy returns the clamped count), never the number
+-- asked for: a line that announced a purchase the counter refused would be a lie the player acts on.
+function M.feedback_trade(action_name, count, total)
+  if action_name ~= "buy" and action_name ~= "sell" then
+    error('[comptoir] gui.format.feedback_trade: action must be "buy" or "sell", got ' .. tostring(action_name), 2)
+  end
+  if action_name == "buy" then
+    return { "comptoir.bought", M.grouped(count), { "comptoir.money", M.grouped(total) } }
+  end
+  return { "comptoir.sold", M.grouped(count), { "comptoir.money", M.grouped(total) } }
+end
+
+function M.feedback_contract(action_name, quantity, item)
+  if action_name ~= "accept" and action_name ~= "dispatch" then
+    error('[comptoir] gui.format.feedback_contract: action must be "accept" or "dispatch", got ' .. tostring(action_name), 2)
+  end
+  if type(item) ~= "string" or item == "" then
+    error("[comptoir] gui.format.feedback_contract: item is required", 2)
+  end
+  if action_name == "accept" then
+    return { "comptoir.accepted", M.grouped(quantity), { "item-name." .. item } }
+  end
+  return { "comptoir.dispatched", M.grouped(quantity), { "item-name." .. item } }
+end
+
+-- A refusal wears the same row, with the reason's own caption (window.REASON_KEYS): the same words
+-- whether the reason comes from a button, a trade or a dispatch.
+function M.feedback_refusal(caption)
+  if caption == nil then
+    error("[comptoir] gui.format.feedback_refusal: the reason's caption is required", 2)
+  end
+  return { "comptoir.refused", caption }
 end
 
 return M

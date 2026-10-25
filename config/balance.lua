@@ -28,9 +28,16 @@ local M = {
     -- steel chest, a size every player already knows.
     inventory_size = 48,
 
+    -- The sprite's footprint, in tiles (ADR 0056 §1). `graphics/counter/counter.png` is 288 px at
+    -- 32 px per tile and is never scaled, so this is also the half-extent written into the two boxes
+    -- of `data/counter.lua`: a redraw that changes the tile count is a change HERE and nowhere else.
+    footprint_tiles = 9,
+
     -- Tiles between two counters, centre to centre. The hub is a spaceport, not a chest: two of them
     -- in the same logistic footprint would make the choice of a site meaningless (ADR 0014). 150
-    -- tiles is ~4.7 chunks, wider than a base's first bus and narrower than a radar's reach.
+    -- tiles is ~4.7 chunks, wider than a base's first bus and narrower than a radar's reach — and,
+    -- since the counter is 9 x 9 (ADR 0056), comfortably wider than the building itself. The guard at
+    -- the bottom of this file keeps that second property true.
     min_distance = 150,
   },
 
@@ -119,6 +126,25 @@ local M = {
 
 -- Load-time guards: numbers that do not add up fail here, once, instead of mid-game.
 do
+  -- The counter's two boxes are halves of `footprint_tiles`, so the footprint must be a positive whole
+  -- number of tiles — and two counters must still be able to stand apart (ADR 0056 §1).
+  local counter = M.counter
+  if type(counter.footprint_tiles) ~= "number" or counter.footprint_tiles < 1 or counter.footprint_tiles % 2 ~= 1 then
+    error(
+      "[comptoir] config/balance: counter.footprint_tiles must be an odd positive whole number of "
+        .. "tiles (the boxes are its halves), got " .. tostring(counter.footprint_tiles)
+    )
+  end
+  if counter.min_distance < counter.footprint_tiles then
+    error(
+      "[comptoir] config/balance: counter.min_distance ("
+        .. counter.min_distance
+        .. " tiles) is below the counter's own footprint ("
+        .. counter.footprint_tiles
+        .. " tiles): two counters could overlap"
+    )
+  end
+
   local elevator = M.elevator
   local phases = elevator.rise_seconds + elevator.away_seconds + elevator.descend_seconds
   if phases ~= elevator.cycle_seconds then
